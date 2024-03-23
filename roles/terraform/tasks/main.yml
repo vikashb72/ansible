@@ -47,7 +47,7 @@ https://apt.releases.hashicorp.com {{ ansible_facts['lsb']['codename'] }} main"
 
 - name: Run the equivalent of "apt-get update"
   ansible.builtin.apt:
-    update_cache: yes
+    update_cache: true
 
 - name: Install Terraform packages
   ansible.builtin.package:

@@ -1,7 +1,7 @@
 ---
 
-- name: Check group 
-  meta: end_host
+- name: Check group
+  ansible.builtin.meta: end_host
   when: "'docker' not in group_names"
 
 - name: Update apt
@@ -44,12 +44,14 @@
 
 - name: Add docker to apt repository.
   ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-apt-keyring.asc] https://download.docker.com/linux/ubuntu {{ ansible_facts['lsb']['codename'] }} stable"
+    repo: |
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-apt-keyring.asc]
+      https://download.docker.com/linux/ubuntu {{ ansible_facts['lsb']['codename'] }} stable
     state: present
 
 - name: Run the equivalent of "apt-get update"
   ansible.builtin.apt:
-    update_cache: yes
+    update_cache: true
 
 - name: Install Docker packages
   ansible.builtin.package:
