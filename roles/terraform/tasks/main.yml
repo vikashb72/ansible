@@ -1,0 +1,57 @@
+---
+
+- name: Update apt
+  ansible.builtin.apt:
+    upgrade: true
+    update_cache: true
+
+- name: Install packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - software-properties-common
+    - net-tools
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - vim
+    - file
+    - gnupg
+
+- name: Set up bashrc
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK -"
+    block: |
+
+      bind '"\e[A": history-search-backward'
+      bind '"\e[B": history-search-forward'
+
+      export EDITOR=/usr/bin/vi
+  loop:
+    - /root/.bashrc
+    - /home/vikashb/.bashrc
+
+- name: Download Terraform key
+  ansible.builtin.get_url:
+    url: https://apt.releases.hashicorp.com/gpg
+    dest: /etc/apt/keyrings/hashicorp-apt-keyring.asc
+    mode: "0644"
+
+- name: Add docker to apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/hashicorp-apt-keyring.asc]
+https://apt.releases.hashicorp.com {{ ansible_facts['lsb']['codename'] }} main"
+    state: present
+
+- name: Run the equivalent of "apt-get update"
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Install Terraform packages
+  ansible.builtin.package:
+    name: terraform
+    state: present
+
+...

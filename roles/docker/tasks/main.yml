@@ -1,0 +1,71 @@
+---
+
+- name: Check group 
+  meta: end_host
+  when: "'docker' not in group_names"
+
+- name: Update apt
+  ansible.builtin.apt:
+    upgrade: true
+    update_cache: true
+
+- name: Install packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - software-properties-common
+    - net-tools
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - vim
+    - file
+
+- name: Set up bashrc
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK -"
+    block: |
+
+      bind '"\e[A": history-search-backward'
+      bind '"\e[B": history-search-forward'
+
+      export EDITOR=/usr/bin/vi
+  loop:
+    - /root/.bashrc
+    - /home/vikashb/.bashrc
+
+- name: Download docker key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker-apt-keyring.asc
+    mode: "0644"
+
+- name: Add docker to apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-apt-keyring.asc] https://download.docker.com/linux/ubuntu {{ ansible_facts['lsb']['codename'] }} stable"
+    state: present
+
+- name: Run the equivalent of "apt-get update"
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Install Docker packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+
+- name: Add myself to docker group
+  ansible.builtin.user:
+    name: vikashb
+    groups: sudo,docker
+    append: true
+
+...

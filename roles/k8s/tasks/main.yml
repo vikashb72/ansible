@@ -1,0 +1,160 @@
+---
+
+- name: Update bashrc for my settings
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK -"
+    block: |
+      source <(kubectl completion bash)
+
+      bind '"\e[A": history-search-backward'
+      bind '"\e[B": history-search-forward'
+
+      export EDITOR=/usr/bin/vi
+  loop:
+    - /root/.bashrc
+    - /home/vikashb/.bashrc
+
+- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+  ansible.builtin.command: swapoff -a
+
+- name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+  ansible.builting.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
+    replace: '# \1'
+ 
+- name: Update apt
+  ansible.builtin.apt:
+    upgrade: true
+    update_cache: true
+
+- name: Install packages 
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - software-properties-common
+    - net-tools
+    - apt-transport-https
+    - ca-certificates
+    - curl
+    - vim
+    - file
+
+- name: Download k8s key
+  ansible.builtin.get_url:
+    url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+    dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
+    mode: "0644"
+
+- name: Add Kubernetes apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+    state: present
+
+- name: Run the equivalent of "apt-get update"
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Install packages 
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - kubectl
+    - bash-completion
+    - containerd
+    - containernetworking-plugins
+    - containers-storage
+    - kubeadm
+    - kubelet
+
+- name: Mark as hold
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - kubeadm
+    - kubectl
+    - kubelet
+
+- name: Add the modules
+  ansible.builtin.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - br_netfilter
+    - overlay
+
+- name: Add modules-load
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/containerd.conf
+    content: |
+      overlay
+      br_netfilter
+    owner: root
+    mode: "0644"
+  
+- name: Update sysctl
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/s20k8s.conf
+  loop:
+    - name: net.ipv4.ip_forward
+      value: '1'
+    - name: net.bridge.bridge-nf-call-iptables
+      value: '1'
+    - name: net.bridge.bridge-nf-call-ip6tables
+      value: '1'
+- name: End here WIP
+  meta: end_host
+
+- name: Install packages for controller
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - etcd
+  when: "'k8s_controllers' in group_names"
+
+
+#  /etc/containerd/config.toml
+
+# Install the Calico Network Add-On
+# kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+#  when: "'k8s_controllers' in group_names"
+
+# create cluster
+# kubeadm init --pod-network-cidr=10.244.0.0/16 control-plane-endpoint ???
+# sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+# kubeadm token list
+
+# Token CA Cert Hash
+# $ openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | \
+# openssl dgst -sha256 -hex | sed 's/^.* //'
+
+
+# kubectl get nodes
+# kubectl get pods --all-namespaces
+
+# kubectl run nginx --image nginx:latest
+# kubectl expose pod/nginx --port 80 --type NodePort
+# kubectl get services
+
+# Join the Kubernetes Worker Nodes in the Cluster
+# kubeadm token create --print-join-command
+# kubectl get nodes
+# kubeadm join controllernodeip:6443 \
+# --node-name node-b \
+# --token <token> \
+# --discovery-token-ca-cert-hash sha256:<token-ca-cert-hash>
+
+# 
+#  when: "'k8s_nodes' in group_names"
+
+...
