@@ -1,5 +1,17 @@
 ---
 
+- name: Check if k8s is initialised
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: have_k8s_config
+  when: "'k8s' in group_names"
+
+- name: Include bootstrap
+  ansible.builtin.include_tasks: "bootstrap.yml"
+  when:
+    - "'k8s' in group_names"
+    - not have_k8s_config.stat.exists
+
 - name: Update bashrc for my settings
   ansible.builtin.blockinfile:
     path: "{{ item }}"
@@ -125,7 +137,7 @@
     dest: /etc/containerd/config.toml
     mode: "0644"
     owner: root
-  notify: restart containerd
+  notify: Restart containerd
 
 - name: Force all notified handlers to run
   ansible.builtin.meta: flush_handlers
@@ -133,21 +145,21 @@
 - name: End here WIP
   ansible.builtin.meta: end_host
 
-- name: Install packages for controller
-  ansible.builtin.package:
-    name: "{{ item }}"
-    state: present
-  loop:
-    - etcd
-  when: "'k8s_controllers' in group_names"
+- name: Create ~/.kube directory
+  ansible.builtin.file:
+    path: /home/vikashb/.kube
+    state: directory
+    mode: "0755"
+    owner: vikashb
 
-# # Install the Calico Network Add-On
-# # kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
-# #  when: "'k8s_controllers' in group_names"
-#
-# # create cluster
-# # kubeadm init --pod-network-cidr=10.244.0.0/16 control-plane-endpoint ???
-# # sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+- name: Copy /etc/kubernetes/admin.conf to $HOME/.kube/config
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/vikashb/.kube/config
+    owner: vikashb
+    mode: "0644"
+    remote_src: true
+
 # # kubeadm token list
 #
 # # Token CA Cert Hash
@@ -161,15 +173,4 @@
 # # kubectl expose pod/nginx --port 80 --type NodePort
 # # kubectl get services
 #
-# # Join the Kubernetes Worker Nodes in the Cluster
-# # kubeadm token create --print-join-command
-# # kubectl get nodes
-# # kubeadm join controllernodeip:6443 \
-# # --node-name node-b \
-# # --token <token> \
-# # --discovery-token-ca-cert-hash sha256:<token-ca-cert-hash>
-#
-# #
-# #  when: "'k8s_nodes' in group_names"
-
 ...
