@@ -1,15 +1,27 @@
 ---
 
-- name: Check if k8s is initialised
+- name: Check if k8s is initialised on controller
   ansible.builtin.stat:
     path: /etc/kubernetes/admin.conf
   register: have_k8s_config
-  when: "'k8s' in group_names"
+  when: "'k8s_controllers' in group_names"
 
 - name: Include bootstrap
   ansible.builtin.include_tasks: "bootstrap.yml"
   when:
-    - "'k8s' in group_names"
+    - "'k8s_controllers' in group_names"
+    - not have_k8s_config.stat.exists
+
+- name: Check if k8s is initialised on worker
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: have_k8s_config
+  when: "'k8s_nodes' in group_names"
+
+- name: Include bootstrap
+  ansible.builtin.include_tasks: "bootstrap.yml"
+  when:
+    - "'k8s_nodes' in group_names"
     - not have_k8s_config.stat.exists
 
 - name: Update bashrc for my settings
@@ -142,9 +154,6 @@
 - name: Force all notified handlers to run
   ansible.builtin.meta: flush_handlers
 
-- name: End here WIP
-  ansible.builtin.meta: end_host
-
 - name: Create ~/.kube directory
   ansible.builtin.file:
     path: /home/vikashb/.kube
@@ -159,6 +168,7 @@
     owner: vikashb
     mode: "0644"
     remote_src: true
+  when: "'k8s_controllers' in group_names"
 
 # # kubeadm token list
 #

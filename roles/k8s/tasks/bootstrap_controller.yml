@@ -51,13 +51,4 @@
     - bootrap_host != inventory_hostname
     - not have_k8s_config.stat.exists
 
-- name: Nodes join cluster if required
-  ansible.builtin.command: >
-    {{ k8s_join.stdout }}
-  changed_when: false
-  when:
-    - "'k8s_nodes' in group_names"
-    - bootrap_host != inventory_hostname
-    - not have_k8s_config.stat.exists
-
 ...
