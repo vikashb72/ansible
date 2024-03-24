@@ -15,11 +15,11 @@
     - /root/.bashrc
     - /home/vikashb/.bashrc
 
-- name: Disable SWAP since kubernetes can't work with swap enabled (1/2)
+- name: Disable SWAP (1/2)
   ansible.builtin.command: swapoff -a
   changed_when: false
 
-- name: Disable SWAP in fstab since kubernetes can't work with swap enabled (2/2)
+- name: Disable SWAP in fstab (2/2)
   ansible.builtin.replace:
     path: /etc/fstab
     regexp: '^([^#].*?\sswap\s+sw\s+.*)$'
@@ -66,8 +66,6 @@
     - kubectl
     - bash-completion
     - containerd
-    - containernetworking-plugins
-    - containers-storage
     - kubeadm
     - kubelet
 
@@ -79,6 +77,7 @@
     - kubeadm
     - kubectl
     - kubelet
+    - containerd
 
 - name: Add the modules
   community.general.modprobe:
@@ -113,6 +112,24 @@
     - name: net.bridge.bridge-nf-call-ip6tables
       value: '1'
 
+- name: Create containerd directory
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: "0755"
+    owner: root
+
+- name: Copy containerd config
+  ansible.builtin.copy:
+    src: config.toml
+    dest: /etc/containerd/config.toml
+    mode: "0644"
+    owner: root
+  notify: restart containerd
+
+- name: Force all notified handlers to run
+  ansible.builtin.meta: flush_handlers
+
 - name: End here WIP
   ansible.builtin.meta: end_host
 
@@ -123,9 +140,7 @@
   loop:
     - etcd
   when: "'k8s_controllers' in group_names"
-#
-# #  /etc/containerd/config.toml
-#
+
 # # Install the Calico Network Add-On
 # # kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
 # #  when: "'k8s_controllers' in group_names"
