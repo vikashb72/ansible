@@ -20,7 +20,7 @@
     - ca-certificates
     - curl
     - vim
-    - file
+    - bash-completion
 
 - name: Set up bashrc
   ansible.builtin.blockinfile:
@@ -63,6 +63,12 @@
     - containerd.io
     - docker-buildx-plugin
     - docker-compose-plugin
+
+- name: Download docker key
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/docker/docker-ce/master/components/cli/contrib/completion/bash/docker
+    dest: /etc/bash_completion.d/docker.sh
+    mode: "0644"
 
 - name: Add myself to docker group
   ansible.builtin.user:
