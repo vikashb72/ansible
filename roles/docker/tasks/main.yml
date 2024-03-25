@@ -70,4 +70,29 @@
     groups: sudo,docker
     append: true
 
+- name: Pull the registry image
+  community.docker.docker_image:
+    name: registry:2
+    source: pull
+  when: "'docker_reg' in group_names"
+
+- name: Create /data/docker/registry
+  ansible.builtin.file:
+    path: /data/docker/registry
+    mode: "0775"
+    owner: root
+    group: docker
+    state: directory
+
+- name: Start registry container
+  community.docker.docker_container:
+    name: local-registry
+    image: registry:2
+    volumes:
+      - /data/docker/registry:/var/lib/registry
+    state: started
+    restart: true
+    ports:
+     - "5000:5000"
+
 ...
