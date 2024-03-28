@@ -1,0 +1,3 @@
+exclude_paths:
+  - roles/k8s/files/calico.yaml
+  - .github/workflows/ansible_lint.yml
