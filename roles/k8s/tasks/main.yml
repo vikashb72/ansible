@@ -6,8 +6,8 @@
   register: have_k8s_config
   when: "'k8s_controllers' in group_names"
 
-- name: Include bootstrap
-  ansible.builtin.include_tasks: "bootstrap.yml"
+- name: Include controller bootstrap
+  ansible.builtin.include_tasks: "bootstrap_controller.yml"
   when:
     - "'k8s_controllers' in group_names"
     - not have_k8s_config.stat.exists
@@ -18,8 +18,8 @@
   register: have_k8s_config
   when: "'k8s_nodes' in group_names"
 
-- name: Include bootstrap
-  ansible.builtin.include_tasks: "bootstrap.yml"
+- name: Include node bootstrap
+  ansible.builtin.include_tasks: "bootstrap_nodes.yml"
   when:
     - "'k8s_nodes' in group_names"
     - not have_k8s_config.stat.exists
