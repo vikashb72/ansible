@@ -1,7 +1,7 @@
 ---
 
 - name: Docker playbook
-  hosts: all
+  hosts: all:&docker
   pre_tasks:
     - name: Verify ansible version
       ansible.builtin.assert:
