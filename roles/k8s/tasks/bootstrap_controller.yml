@@ -51,4 +51,53 @@
     - bootrap_host != inventory_hostname
     - not have_k8s_config.stat.exists
 
+- name: Download helm key
+  ansible.builtin.get_url:
+    url: https://baltocdn.com/helm/signing.asc
+    dest: /etc/apt/keyrings/helm-apt-keyring.asc
+    mode: "0644"
+
+- name: Add Kubernetes apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/helm-apt-keyring.asc] https://baltocdn.com/helm/stable/debian/ all main"
+    state: present
+
+- name: Run the equivalent of "apt-get update"
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install packages
+  ansible.builtin.package:
+    name: helm
+    state: present
+
+- name: Ingress
+  ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.4/config/manifests/metallb-native.yaml
+  delegate_to: "{{ bootrap_host }}"
+  changed_when: false
+  when:
+    - "'k8s' in group_names"
+    - bootrap_host == inventory_hostname
+
+- name: Copy configs
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/tmp/{{ item }}"
+    owner: root
+    mode: "0644"
+  loop:
+    - ipaddresses_pools.yaml
+    - l2-advert.yaml
+
+- name: Install
+  ansible.builtin.command: kubectl apply -f /tmp/{{ item }}
+  delegate_to: "{{ bootrap_host }}"
+  changed_when: false
+  loop:
+    - ipaddresses_pools.yaml
+    - l2-advert.yaml
+  when:
+    - "'k8s' in group_names"
+    - bootrap_host == inventory_hostname
+
 ...
