@@ -88,6 +88,8 @@
   loop:
     - ipaddresses_pools.yaml
     - l2-advert.yaml
+    - dashboard.yaml
+    - dashboard.adminuser.yml
 
 - name: Install
   ansible.builtin.command: kubectl apply -f /tmp/{{ item }}
@@ -96,6 +98,8 @@
   loop:
     - ipaddresses_pools.yaml
     - l2-advert.yaml
+    - dashboard.yaml
+    - dashboard.adminuser.yml
   when:
     - "'k8s' in group_names"
     - bootrap_host == inventory_hostname
