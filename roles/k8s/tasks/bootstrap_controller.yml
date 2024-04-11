@@ -79,6 +79,13 @@
     - "'k8s' in group_names"
     - bootrap_host == inventory_hostname
 
+- name: Install kubectl-convert
+  ansible.builtin.copy:
+    src: kubectl-convert
+    dest: /usr/local/bin/kubectl-convert
+    owner: root
+    mode: "0755"
+
 - name: Copy configs
   ansible.builtin.copy:
     src: "{{ item }}"
