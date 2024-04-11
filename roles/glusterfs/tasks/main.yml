@@ -1,0 +1,89 @@
+---
+
+- name: Install Packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - software-properties-common
+    - glusterfs-server
+    - glusterfs-cli
+#    - glusterfs-client
+
+- name: Create a xfs filesystem on /dev/vdb
+  community.general.filesystem:
+    fstype: xfs
+    dev: /dev/vdb
+
+- name: Create mount point
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: root
+  loop:
+    - /gluster/replicated/brick1
+    - /data/pv
+
+- name: Update fstab
+  ansible.posix.mount:
+    path: /gluster/replicated/brick1
+    src: /dev/vdb
+    fstype: xfs
+    state: "{{ item }}"
+  loop:
+    - present
+    - mounted
+
+- name: Enable glusterd
+  ansible.builtin.systemd_service:
+    name: glusterd
+    enabled: true
+    state: started
+    masked: no
+
+#- name: Start gluster server
+#  ansible.builtin.service:
+#    name: glusterd
+#    state: started
+
+- name: Run probe on boostrap master
+  gluster.gluster.gluster_peer:
+    state: present
+    nodes:
+      - 192.168.0.21
+      - 192.168.0.22
+      - 192.168.0.23
+  when: ansible_default_ipv4.address == gluster.bootstrap
+
+- name: Run probe on nodes
+  gluster.gluster.gluster_peer:
+    state: present
+    nodes:
+      - 192.168.0.21
+  when: ansible_default_ipv4.address != gluster.bootstrap
+
+- name: Create gluster volume
+  gluster.gluster.gluster_volume:
+    state: present
+    name: gvol1
+    brick: /gluster/replicated/brick1/gvol
+    replicas: 3
+    cluster:
+      - 192.168.0.21
+      - 192.168.0.22
+      - 192.168.0.23
+  run_once: true
+
+- name: Update fstab
+  ansible.posix.mount:
+    path: /data/pv
+    src: "{{ ansible_default_ipv4.address }}:/gvol1"
+    fstype: glusterfs
+    opts: 'defaults,_netdev'
+    state: "{{ item }}"
+  loop:
+    - present
+    - mounted
+
+...

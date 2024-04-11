@@ -1,0 +1,14 @@
+---
+
+- name: Gluster Gluster playbook
+  hosts: all:&k8s_nodes
+  pre_tasks:
+    - name: Verify ansible version
+      ansible.builtin.assert:
+        that: "ansible_version.full is version_compare('2.15', '>=')"
+        msg: "Ansible 2.15 or later required"
+  become: true
+  become_method: ansible.builtin.sudo
+  roles:
+    - glusterfs
+...

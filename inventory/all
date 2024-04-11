@@ -1,6 +1,5 @@
 [ubuntu_python3:children]
-k8s_controllers
-k8s_nodes
+k8s
 docker
 docker_reg
 
