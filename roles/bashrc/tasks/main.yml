@@ -1,0 +1,18 @@
+---
+
+- name: Update bashrc for my settings
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK -"
+    block: |
+      # set up tcsh search
+      bind '"\e[A": history-search-backward'
+      bind '"\e[B": history-search-forward'
+
+      # default editor
+      export EDITOR=/usr/bin/vi
+  loop:
+    - /root/.bashrc
+    - /home/vikashb/.bashrc
+
+...
