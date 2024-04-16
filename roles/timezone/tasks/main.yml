@@ -1,0 +1,17 @@
+---
+
+- name: Set timezone to Africa/Johannesburg
+  community.general.timezone:
+    name: Africa/Johannesburg
+
+- name: Enable ntp
+  ansible.builtin.command: timedatectl set-ntp yes
+  changed_when: false
+
+- name: Set correct locale
+  ansible.builtin.replace:
+    path: /etc/default/locale
+    regexp: 'LANG=en_US.UTF-8'
+    replace: 'LANG=C.UTF-8'
+
+...

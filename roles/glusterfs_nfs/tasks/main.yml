@@ -1,0 +1,136 @@
+---
+
+- name: Include common roles
+  ansible.builtin.include_role:
+    name: "{{ files }}"
+  loop:
+    - bashrc
+    - common_packages
+    - timezone
+  loop_control:
+    loop_var: files
+
+- name: Install Packages
+  ansible.builtin.package:
+    name: "{{ pkg }}"
+    state: present
+  loop:
+    - glusterfs-server
+    - glusterfs-cli
+    - glusterfs-client
+  loop_control:
+    loop_var: pkg
+
+- name: Create a xfs filesystem on /dev/vdb
+  community.general.filesystem:
+    fstype: xfs
+    dev: /dev/vdb
+
+- name: Create Directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: root
+  loop:
+    - /gluster/replicated/brick
+    - /data/pv
+    - /etc/systemd/system/srv.mount.d
+
+- name: Install /etc/systemd/system/srv.mount.d/override.conf
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/srv.mount.d/override.conf
+    content: |
+      [Unit]
+      After=glusterfs-server.service
+      Wants=glusterfs-server.service
+    owner: root
+    mode: "0644"
+
+- name: Update fstab
+  ansible.posix.mount:
+    path: /gluster/replicated/brick
+    src: /dev/vdb
+    fstype: xfs
+    state: "{{ item }}"
+  loop:
+    - present
+    - mounted
+
+- name: Enable glusterd
+  ansible.builtin.systemd_service:
+    name: glusterd
+    enabled: true
+    state: started
+    masked: no
+
+- name: Run probe on boostrap master
+  gluster.gluster.gluster_peer:
+    state: present
+    nodes:
+      - 192.168.0.61
+      - 192.168.0.62
+      - 192.168.0.63
+  when: ansible_default_ipv4.address == gluster.bootstrap
+
+- name: Run probe on nodes
+  gluster.gluster.gluster_peer:
+    state: present
+    nodes:
+      - 192.168.0.61
+  when: ansible_default_ipv4.address != gluster.bootstrap
+
+- name: Create gluster volume
+  gluster.gluster.gluster_volume:
+    state: present
+    name: gvol1
+    brick: /gluster/replicated/brick/gvol
+    replicas: 3
+    cluster:
+      - 192.168.0.61
+      - 192.168.0.62
+      - 192.168.0.63
+  when: ansible_default_ipv4.address == gluster.bootstrap
+
+- name: Start gluster volume
+  gluster.gluster.gluster_volume:
+    state: started
+    name: gvol1
+  when: ansible_default_ipv4.address == gluster.bootstrap
+
+- name: Start gluster volume
+  ansible.builtin.command: gluster volume set gvol1 nfs.disable on
+  changed_when: false
+  when: ansible_default_ipv4.address == gluster.bootstrap
+
+- name: Install Packages
+  ansible.builtin.package:
+    name: nfs-ganesha-gluster
+    state: present
+
+- name: Install ganesha.conf template
+  ansible.builtin.template:
+    src: ganesha.conf.j2
+    dest: /etc/ganesha/ganesha.conf
+    owner: root
+    mode: "0644"
+
+- name: Enable ganesha-nfs
+  ansible.builtin.systemd_service:
+    name: nfs-ganesha
+    enabled: true
+    state: started
+    masked: no
+
+- name: Update fstab
+  ansible.posix.mount:
+    path: /data/pv
+    src: "{{ ansible_default_ipv4.address }}:/gvol1"
+    fstype: glusterfs
+    opts: 'defaults,_netdev,x-systemd.automount'
+    state: "{{ item }}"
+  loop:
+    - present
+    - mounted
+
+...

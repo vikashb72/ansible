@@ -1,7 +1,7 @@
 ---
 
-- name: Gluster Cluster playbook
-  hosts: all:&k8s_nodes
+- name: Gluster NFS playbook
+  hosts: all:&gfs
   pre_tasks:
     - name: Verify ansible version
       ansible.builtin.assert:
@@ -10,5 +10,5 @@
   become: true
   become_method: ansible.builtin.sudo
   roles:
-    - glusterfs
+    - glusterfs_nfs
 ...

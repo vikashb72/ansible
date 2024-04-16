@@ -1,0 +1,50 @@
+NFS_CORE_PARAM {
+    Bind_addr = {{ ansible_default_ipv4.address }};
+    NFS_Port = 2049;
+    MNT_Port = 20048;
+    NLM_Port = 38468;
+    Rquota_Port = 4501;
+
+    # possible to mount with NFSv3 to NFSv4 Pseudo path
+    mount_path_pseudo = true;
+
+    # NFS protocol
+    Protocols = 3,4;
+}
+
+EXPORT_DEFAULTS {
+    # default access mode
+    Access_Type = RW;
+}
+
+EXPORT {
+    # unique ID
+    Export_Id = 101;                  
+
+    # mount path of Gluster Volume
+    Path = "/data/pv";                
+
+    FSAL {
+        # any name
+        name = GLUSTER;
+
+        # hostname or IP address of this Node
+        hostname="{{ ansible_default_ipv4.address }}"; 
+
+        # Gluster volume name
+        volume="gvol1";
+    }
+
+    # config for root Squash
+    Squash="root_squash";
+
+    # NFSv4 Pseudo path
+    Pseudo="/data/pv";
+
+    # allowed security options
+    SecType = "sys";
+}
+LOG {
+    # default log level
+    Default_Log_Level = WARN;
+}
