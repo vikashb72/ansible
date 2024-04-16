@@ -1,3 +1,4 @@
 exclude_paths:
   - roles/k8s/files/*.yaml
   - .github/workflows/ansible_lint.yml
+  - roles/k8s/files/dashboard.adminuser.yml
