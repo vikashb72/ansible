@@ -1,0 +1,54 @@
+global_defs {
+   notification_email {
+     vikashb@home.where-ever.za.net
+   }
+   notification_email_from nfslb@home.where-ever.za.net
+   smtp_server localhost
+   smtp_connect_timeout 30
+}
+
+vrrp_script chk_haproxy {
+    script "systemctl is-active haproxy"  # check the haproxy process
+    interval 2                            # every 2 seconds
+    weight 2                              # add 2 points if OK
+}
+
+vrrp_script check_nfs_port {
+    script "nc -zv 127.0.0.1 2049"
+    interval 5
+    fall 4
+    rise 2
+}
+
+vrrp_instance VI_1 {
+{% if ansible_default_ipv4.address == keepalived.initial_master %}
+    state MASTER
+{% else %}
+    state BACKUP
+{% endif %}
+    interface {{ ansible_default_ipv4.interface }}
+    virtual_router_id 10
+    priority {{ ansible_default_ipv4.address.split('.')[-1] }}
+    advert_int 1
+    unicast_src_ip {{ ansible_default_ipv4.address }}/24
+    unicast_peer {
+{% for peer in keepalived.peers %}
+{% if peer != ansible_default_ipv4.address %}
+       {{ peer }}/24
+{% endif %}
+{% endfor %}
+    }
+    virtual_ipaddress {
+        {{ keepalived.floating_ip }}/24
+    }
+
+    authentication {
+        auth_type PASS
+        auth_pass 12345
+    }
+
+    track_script {
+        chk_haproxy
+        #check_nfs_port
+    }
+}

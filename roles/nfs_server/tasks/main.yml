@@ -34,7 +34,7 @@
     name: nfs-server
     enabled: true
     state: started
-    masked: no
+    masked: false
 
 - name: Export
   ansible.builtin.command: exportfs -a

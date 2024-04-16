@@ -1,0 +1,35 @@
+global
+    log         127.0.0.1 local2
+    stats       socket /var/run/haproxy.sock mode 0600 level admin
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+
+defaults
+    mode                    tcp
+    log                     global
+    option                  dontlognull
+    option                  redispatch
+    retries                 3
+    timeout http-request    10s
+    timeout queue           1m
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout http-keep-alive 10s
+    timeout check           10s
+    maxconn                 3000
+
+frontend nfs-in
+    bind {{ keepalived.floating_ip }}:2049
+    mode tcp
+    option tcplog
+    default_backend             nfs-back
+
+
+backend nfs-back
+    balance     roundrobin
+{% for peer in keepalived.peers %}
+    server {{ peer }} {{ peer }}:2049 check
+{% endfor %}

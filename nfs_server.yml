@@ -10,5 +10,5 @@
   become: true
   become_method: ansible.builtin.sudo
   roles:
-    - nfs-server
+    - nfs_server
 ...

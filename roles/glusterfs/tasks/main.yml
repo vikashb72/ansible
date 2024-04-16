@@ -40,12 +40,7 @@
     name: glusterd
     enabled: true
     state: started
-    masked: no
-
-#- name: Start gluster server
-#  ansible.builtin.service:
-#    name: glusterd
-#    state: started
+    masked: false
 
 - name: Run probe on boostrap master
   gluster.gluster.gluster_peer:

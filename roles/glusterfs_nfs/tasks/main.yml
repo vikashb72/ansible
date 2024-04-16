@@ -127,10 +127,94 @@
     path: /data/pv
     src: "{{ ansible_default_ipv4.address }}:/gvol1"
     fstype: glusterfs
-    opts: 'defaults,_netdev,x-systemd.automount'
+    opts: 'defaults,_netdev'
     state: "{{ item }}"
   loop:
     - present
     - mounted
+
+- name: Update sysctl
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/s20gnfs.conf
+  loop:
+    - name: net.ipv4.ip_forward
+      value: '1'
+    - name: net.ipv4.ip_nonlocal_bind
+      value: '1'
+
+- name: Install Packages
+  ansible.builtin.package:
+    name: keepalived
+    state: present
+
+- name: Install keepalived.conf template
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    mode: "0644"
+
+- name: Enable keepalived
+  ansible.builtin.systemd_service:
+    name: keepalived
+    enabled: true
+    state: started
+    masked: no
+
+- name: Install Packages
+  ansible.builtin.package:
+    name: haproxy
+    state: present
+
+- name: Install keepalived.conf template
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    mode: "0644"
+
+- name: Enable haproxy
+  ansible.builtin.systemd_service:
+    name: haproxy
+    enabled: true
+    state: started
+    masked: no
+
+- name: Install /etc/rsyslog.d/60.ha.conf
+  ansible.builtin.copy:
+    dest: /etc/rsyslog.d/60.ha.conf
+    content: |
+      local2.*                              /var/log/haproxy.log
+    owner: root
+    mode: "0644"
+  register: haproxy_log
+
+- name: Restart rsyslog
+  ansible.builtin.service:
+    name: rsyslog
+    state: restarted
+  when: haproxy_log.changed is sameas true
+
+- name: Log rotation for local0
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/haproxy
+    content: |
+      /var/log/haproxy.log {
+          su syslog adm
+          daily
+          rotate 8
+          copytruncate
+          maxsize 100M
+          dateext
+          compress
+          missingok
+      }
+    owner: root
+    mode: "0644"
 
 ...
