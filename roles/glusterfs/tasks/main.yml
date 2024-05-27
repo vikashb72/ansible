@@ -1,39 +1,67 @@
 ---
 
+- name: Include Roles
+  ansible.builtin.include_role:
+    name: "{{ item }}"
+  loop:
+    - common_packages
+    - bashrc
+    - timezone
+
 - name: Install Packages
   ansible.builtin.package:
     name: "{{ item }}"
     state: present
   loop:
-    - software-properties-common
     - glusterfs-server
     - glusterfs-cli
-#    - glusterfs-client
+    - glusterfs-client
 
-- name: Create a xfs filesystem on /dev/vdb
+- name: Create a xfs filesystem(s) for disks
   community.general.filesystem:
     fstype: xfs
-    dev: /dev/vdb
+    dev: "{{ item.disk }}"
+  loop: "{{ gluster.vols }}"
 
-- name: Create mount point
+- name: Create xfs mount directory
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ item.mount.xfs }}"
     state: directory
     mode: "0755"
     owner: root
-  loop:
-    - /gluster/replicated/brick1
-    - /data/pv
+  loop: "{{ gluster.vols }}"
 
-- name: Update fstab
+- name: Create gfs mount directory
+  ansible.builtin.file:
+    path: "{{ item.mount.gfs }}"
+    state: directory
+    mode: "0755"
+    owner: root
+  loop: "{{ gluster.vols }}"
+
+- name: Update fstab for xfs mount
   ansible.posix.mount:
-    path: /gluster/replicated/brick1
-    src: /dev/vdb
+    path: "{{ item.mount.xfs }}"
+    src: "{{ item.disk }}"
     fstype: xfs
-    state: "{{ item }}"
-  loop:
-    - present
-    - mounted
+    state: present
+  loop: "{{ gluster.vols }}"
+
+- name: Mount the xfs disk
+  ansible.posix.mount:
+    path: "{{ item.mount.xfs }}"
+    src: "{{ item.disk }}"
+    fstype: xfs
+    state: mounted
+  loop: "{{ gluster.vols }}"
+
+- name: Create brick dir
+  ansible.builtin.file:
+    path: "{{ item.brick }}"
+    state: directory
+    mode: "0755"
+    owner: root
+  loop: "{{ gluster.vols }}"
 
 - name: Enable glusterd
   ansible.builtin.systemd_service:
@@ -45,40 +73,44 @@
 - name: Run probe on boostrap master
   gluster.gluster.gluster_peer:
     state: present
-    nodes:
-      - 192.168.0.21
-      - 192.168.0.22
-      - 192.168.0.23
+    nodes: "{{ item }}"
+  loop: "{{ gluster.nodes }}"
   when: ansible_default_ipv4.address == gluster.bootstrap
-
-- name: Run probe on nodes
-  gluster.gluster.gluster_peer:
-    state: present
-    nodes:
-      - 192.168.0.21
-  when: ansible_default_ipv4.address != gluster.bootstrap
 
 - name: Create gluster volume
   gluster.gluster.gluster_volume:
     state: present
-    name: gvol1
-    brick: /gluster/replicated/brick1/gvol
+    name: "{{ item.name }}"
+    brick: "{{ item.brick }}"
     replicas: 3
-    cluster:
-      - 192.168.0.21
-      - 192.168.0.22
-      - 192.168.0.23
-  run_once: true
+    cluster: "{{ gluster.nodes }}"
+  loop: "{{ gluster.vols }}"
+  when: ansible_default_ipv4.address == gluster.bootstrap
 
-- name: Update fstab
+- name: Update fstab for gluster mount
   ansible.posix.mount:
-    path: /data/pv
-    src: "{{ ansible_default_ipv4.address }}:/gvol1"
+    state: present
     fstype: glusterfs
-    opts: 'defaults,_netdev'
-    state: "{{ item }}"
-  loop:
-    - present
-    - mounted
+    path: "{{ item.mount.gfs }}"
+    src: "{{ ansible_default_ipv4.address }}:/{{ item.name }}"
+    opts: "rw,_netdev,backup-volfile-servers={{ gluster.nodes | join(':') }}"
+  loop: "{{ gluster.vols }}"
+
+- name: Mount gluster mount point
+  ansible.posix.mount:
+    state: mounted
+    fstype: glusterfs
+    path: "{{ item.mount.gfs }}"
+    src: "{{ ansible_default_ipv4.address }}:/{{ item.name }}"
+    opts: "rw,_netdev,backup-volfile-servers={{ gluster.nodes | join(':') }}"
+  loop: "{{ gluster.vols }}"
+
+- name: Create gfs test directory
+  ansible.builtin.file:
+    path: "{{ item.mount.gfs }}/test"
+    state: directory
+    mode: "0755"
+    owner: vikashb
+  loop: "{{ gluster.vols }}"
 
 ...

@@ -1,9 +1,17 @@
 ---
 
 gluster:
-  bootstrap: 192.168.0.21
+  bootstrap: 192.168.0.11
   nodes:
-    - 192.168.0.22
-    - 192.168.0.23
+    - 192.168.0.11
+    - 192.168.0.12
+    - 192.168.0.13
+  vols:
+    - name: gvol1
+      disk: /dev/vdb
+      brick: /gluster/gvol1/replicated
+      mount:
+        xfs: /gluster/gvol1
+        gfs: /data/gvol1
 
 ...

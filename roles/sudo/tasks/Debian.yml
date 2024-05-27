@@ -1,0 +1,10 @@
+---
+
+- name: Install my sudo config
+  ansible.builtin.copy:
+    src: 010-vikashb
+    dest: /etc/sudoers.d/010-vikashb
+    mode: "0644"
+    owner: root
+
+...

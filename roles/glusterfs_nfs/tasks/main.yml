@@ -62,7 +62,7 @@
     name: glusterd
     enabled: true
     state: started
-    masked: no
+    masked: false
 
 - name: Run probe on boostrap master
   gluster.gluster.gluster_peer:
@@ -120,7 +120,7 @@
     name: nfs-ganesha
     enabled: true
     state: started
-    masked: no
+    masked: false
 
 - name: Update fstab
   ansible.posix.mount:
@@ -164,7 +164,7 @@
     name: keepalived
     enabled: true
     state: started
-    masked: no
+    masked: false
 
 - name: Install Packages
   ansible.builtin.package:
@@ -183,7 +183,7 @@
     name: haproxy
     enabled: true
     state: started
-    masked: no
+    masked: false
 
 - name: Install /etc/rsyslog.d/60.ha.conf
   ansible.builtin.copy:
@@ -192,13 +192,7 @@
       local2.*                              /var/log/haproxy.log
     owner: root
     mode: "0644"
-  register: haproxy_log
-
-- name: Restart rsyslog
-  ansible.builtin.service:
-    name: rsyslog
-    state: restarted
-  when: haproxy_log.changed is sameas true
+  notify: Restart rsyslog
 
 - name: Log rotation for local0
   ansible.builtin.copy:

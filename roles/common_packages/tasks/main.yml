@@ -2,7 +2,7 @@
 
 - name: Install Packages
   ansible.builtin.package:
-    name: "{{ item }}"
+    name: "{{ pkgs }}"
     state: present
   loop:
     - software-properties-common
@@ -14,5 +14,7 @@
     - curl
     - lynx
     - vim
+  loop_control:
+    loop_var: pkgs
 
 ...

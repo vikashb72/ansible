@@ -1,0 +1,29 @@
+---
+# Ubuntu ufw firewall
+
+- name: Allow ssh access from home network
+  community.general.ufw:
+    rule: allow
+    proto: 'tcp'
+    port: 22
+    src: 192.168.0.0/24
+    dest: any
+  when:
+    - ansible_os_family == "Debian"
+
+- name: Allow outbound connection
+  community.general.ufw:
+    state: enabled
+    policy: allow
+    direction: outgoing
+  when:
+    - ansible_os_family == "Debian"
+
+- name: Deny inbound connections
+  community.general.ufw:
+    policy: deny
+    direction: incoming
+  when:
+    - ansible_os_family == "Debian"
+
+...

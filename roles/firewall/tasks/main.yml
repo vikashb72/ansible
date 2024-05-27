@@ -1,0 +1,6 @@
+---
+
+- name: Include Firewall tasks
+  ansible.builtin.include_tasks: "{{ firewalls[ansible_os_family] }}.yml"
+
+...

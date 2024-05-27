@@ -1,7 +1,7 @@
 ---
 
-- name: Gluster Cluster playbook
-  hosts: all:&gfs
+- name: Set up new host
+  hosts: all
   pre_tasks:
     - name: Verify ansible version
       ansible.builtin.assert:
@@ -9,8 +9,10 @@
         msg: "Ansible 2.15 or later required"
   become: true
   become_method: ansible.builtin.sudo
-  vars_files:
-    - vault/gluster.yml
   roles:
-    - glusterfs
+    - sudo
+    - bashrc
+    - common_packages
+    - timezone
+
 ...

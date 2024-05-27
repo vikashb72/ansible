@@ -2,10 +2,10 @@
 
 - name: Update bashrc for my settings
   ansible.builtin.blockinfile:
-    path: "{{ item }}"
+    path: "{{ files }}"
     marker: "# {mark} ANSIBLE MANAGED BLOCK -"
     block: |
-      # set up tcsh search
+      # set up tcsh like search
       bind '"\e[A": history-search-backward'
       bind '"\e[B": history-search-forward'
 
@@ -14,5 +14,7 @@
   loop:
     - /root/.bashrc
     - /home/vikashb/.bashrc
+  loop_control:
+    loop_var: files
 
 ...
