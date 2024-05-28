@@ -1,0 +1,29 @@
+---
+
+- name: Update apt
+  ansible.builtin.apt:
+    upgrade: true
+    update_cache: true
+
+- name: Download Terraform key
+  ansible.builtin.get_url:
+    url: https://apt.releases.hashicorp.com/gpg
+    dest: /etc/apt/keyrings/hashicorp-apt-keyring.asc
+    mode: "0644"
+
+- name: Add docker to apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/hashicorp-apt-keyring.asc]
+https://apt.releases.hashicorp.com {{ ansible_facts['lsb']['codename'] }} main"
+    state: present
+
+- name: Run the equivalent of "apt-get update"
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install Terraform packages
+  ansible.builtin.package:
+    name: terraform
+    state: present
+
+...

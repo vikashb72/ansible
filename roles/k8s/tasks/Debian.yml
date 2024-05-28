@@ -1,0 +1,157 @@
+---
+
+- name: Check if k8s is initialised on controller
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: have_k8s_config
+  when: "'k8s_controllers' in group_names"
+
+- name: Include controller bootstrap
+  ansible.builtin.include_tasks: "bootstrap_controller.yml"
+  when:
+    - "'k8s_controllers' in group_names"
+    - not have_k8s_config.stat.exists
+
+- name: Check if k8s is initialised on worker
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: have_k8s_config
+  when: "'k8s_nodes' in group_names"
+
+- name: Include node bootstrap
+  ansible.builtin.include_tasks: "bootstrap_nodes.yml"
+  when:
+    - "'k8s_nodes' in group_names"
+    - not have_k8s_config.stat.exists
+
+- name: Update bashrc for my settings
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - kubectl completion"
+    block: |
+      source <(kubectl completion bash)
+  loop:
+    - /root/.bashrc
+    - /home/vikashb/.bashrc
+
+- name: Update apt
+  ansible.builtin.apt:
+    upgrade: true
+    update_cache: true
+
+- name: Download k8s key
+  ansible.builtin.get_url:
+    url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+    dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
+    mode: "0644"
+
+- name: Add Kubernetes apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+    state: present
+
+- name: Run the equivalent of "apt-get update"
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - kubectl
+    - containerd
+    - kubeadm
+    - kubelet
+
+- name: Mark as hold
+  ansible.builtin.dpkg_selections:
+    name: "{{ item }}"
+    selection: hold
+  loop:
+    - kubeadm
+    - kubectl
+    - kubelet
+    - containerd
+
+- name: Add the modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - br_netfilter
+    - overlay
+
+- name: Add modules-load
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/containerd.conf
+    content: |
+      overlay
+      br_netfilter
+    owner: root
+    mode: "0644"
+
+- name: Update sysctl
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/s20k8s.conf
+  loop:
+    - name: net.ipv4.ip_forward
+      value: '1'
+    - name: net.bridge.bridge-nf-call-iptables
+      value: '1'
+    - name: net.bridge.bridge-nf-call-ip6tables
+      value: '1'
+
+- name: Create containerd directory
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: "0755"
+    owner: root
+
+- name: Copy containerd config
+  ansible.builtin.copy:
+    src: config.toml
+    dest: /etc/containerd/config.toml
+    mode: "0644"
+    owner: root
+  notify: Restart containerd
+
+- name: Force all notified handlers to run
+  ansible.builtin.meta: flush_handlers
+
+- name: Create ~/.kube directory
+  ansible.builtin.file:
+    path: /home/vikashb/.kube
+    state: directory
+    mode: "0755"
+    owner: vikashb
+
+- name: Copy /etc/kubernetes/admin.conf to $HOME/.kube/config
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/vikashb/.kube/config
+    owner: vikashb
+    mode: "0644"
+    remote_src: true
+  when: "'k8s_controllers' in group_names"
+
+# # kubeadm token list
+#
+# # Token CA Cert Hash
+# # $ openssl x509 -pubkey -in /etc/kubernetes/pki/ca.crt | openssl rsa -pubin -outform der 2>/dev/null | \
+# # openssl dgst -sha256 -hex | sed 's/^.* //'
+#
+# # kubectl get nodes
+# # kubectl get pods --all-namespaces
+#
+# # kubectl run nginx --image nginx:latest
+# # kubectl expose pod/nginx --port 80 --type NodePort
+# # kubectl get services
+#
+...

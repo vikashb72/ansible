@@ -1,0 +1,73 @@
+---
+
+- name: Update apt
+  ansible.builtin.apt:
+    upgrade: true
+    update_cache: true
+
+- name: Download docker key
+  ansible.builtin.get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /etc/apt/keyrings/docker-apt-keyring.asc
+    mode: "0644"
+
+- name: Add docker to apt repository.
+  ansible.builtin.apt_repository:
+    repo: |
+      deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-apt-keyring.asc]
+      https://download.docker.com/linux/ubuntu {{ ansible_facts['lsb']['codename'] }} stable
+    state: present
+
+- name: Run the equivalent of "apt-get update"
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install Docker packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+
+- name: Download docker key
+  ansible.builtin.get_url:
+    url: https://raw.githubusercontent.com/docker/docker-ce/master/components/cli/contrib/completion/bash/docker
+    dest: /etc/bash_completion.d/docker.sh
+    mode: "0644"
+
+- name: Add myself to docker group
+  ansible.builtin.user:
+    name: vikashb
+    groups: sudo,docker
+    append: true
+
+- name: Pull the registry image
+  community.docker.docker_image:
+    name: registry:2
+    source: pull
+  when: "'docker_reg' in group_names"
+
+- name: Create /data/docker/registry
+  ansible.builtin.file:
+    path: /data/docker/registry
+    mode: "0775"
+    owner: root
+    group: docker
+    state: directory
+
+- name: Start registry container
+  community.docker.docker_container:
+    name: local-registry
+    image: registry:2
+    volumes:
+      - /data/docker/registry:/var/lib/registry
+    state: started
+    restart: true
+    ports:
+      - "5000:5000"
+
+...

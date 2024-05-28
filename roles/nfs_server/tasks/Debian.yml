@@ -1,0 +1,39 @@
+---
+
+- name: Install packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - nfs-kernel-server
+
+- name: Create nfs dir
+  ansible.builtin.file:
+    path: /data/nfs
+    state: directory
+    mode: "0777"
+    owner: nobody
+    group: nogroup
+
+- name: Setup exports
+  ansible.builtin.lineinfile:
+    path: /etc/exports
+    line: '/data/nfs 192.168.0.0/24(root_squash,rw,sync,no_subtree_check)'
+    mode: "0644"
+    state: present
+
+- name: Enable nfs
+  ansible.builtin.systemd_service:
+    name: nfs-server
+    enabled: true
+    state: started
+    masked: false
+
+- name: Export
+  ansible.builtin.command: exportfs -a
+  changed_when: false
+
+# /etc/default/nfs-kernel-server
+# RPCMOUNTOPTS="--manage-gids --no-nfs-version 3"
+
+...

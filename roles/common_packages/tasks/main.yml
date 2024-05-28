@@ -1,20 +1,6 @@
 ---
 
-- name: Install Packages
-  ansible.builtin.package:
-    name: "{{ pkgs }}"
-    state: present
-  loop:
-    - software-properties-common
-    - apt-transport-https
-    - ca-certificates
-    - gnupg
-    - bash-completion
-    - net-tools
-    - curl
-    - lynx
-    - vim
-  loop_control:
-    loop_var: pkgs
+- name: Process OS Family Config
+  ansible.builtin.include_tasks: "{{ ansible_os_family }}.yml"
 
 ...

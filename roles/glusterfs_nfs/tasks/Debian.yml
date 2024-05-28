@@ -1,0 +1,204 @@
+---
+
+- name: Install Packages
+  ansible.builtin.package:
+    name: "{{ pkg }}"
+    state: present
+  loop:
+    - glusterfs-server
+    - glusterfs-cli
+    - glusterfs-client
+  loop_control:
+    loop_var: pkg
+
+- name: Create a xfs filesystem on /dev/vdb
+  community.general.filesystem:
+    fstype: xfs
+    dev: /dev/vdb
+
+- name: Create Directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: root
+  loop:
+    - /gluster/replicated/brick
+    - /data/pv
+    - /etc/systemd/system/srv.mount.d
+
+- name: Install /etc/systemd/system/srv.mount.d/override.conf
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/srv.mount.d/override.conf
+    content: |
+      [Unit]
+      After=glusterfs-server.service
+      Wants=glusterfs-server.service
+    owner: root
+    mode: "0644"
+
+- name: Update fstab
+  ansible.posix.mount:
+    path: /gluster/replicated/brick
+    src: /dev/vdb
+    fstype: xfs
+    state: "{{ item }}"
+  loop:
+    - present
+    - mounted
+
+- name: Enable glusterd
+  ansible.builtin.systemd_service:
+    name: glusterd
+    enabled: true
+    state: started
+    masked: false
+
+- name: Run probe on boostrap master
+  gluster.gluster.gluster_peer:
+    state: present
+    nodes:
+      - 192.168.0.61
+      - 192.168.0.62
+      - 192.168.0.63
+  when: ansible_default_ipv4.address == gluster.bootstrap
+
+- name: Run probe on nodes
+  gluster.gluster.gluster_peer:
+    state: present
+    nodes:
+      - 192.168.0.61
+  when: ansible_default_ipv4.address != gluster.bootstrap
+
+- name: Create gluster volume
+  gluster.gluster.gluster_volume:
+    state: present
+    name: gvol1
+    brick: /gluster/replicated/brick/gvol
+    replicas: 3
+    cluster:
+      - 192.168.0.61
+      - 192.168.0.62
+      - 192.168.0.63
+  when: ansible_default_ipv4.address == gluster.bootstrap
+
+- name: Start gluster volume
+  gluster.gluster.gluster_volume:
+    state: started
+    name: gvol1
+  when: ansible_default_ipv4.address == gluster.bootstrap
+
+- name: Start gluster volume
+  ansible.builtin.command: gluster volume set gvol1 nfs.disable on
+  changed_when: false
+  when: ansible_default_ipv4.address == gluster.bootstrap
+
+- name: Install Packages
+  ansible.builtin.package:
+    name: nfs-ganesha-gluster
+    state: present
+
+- name: Install ganesha.conf template
+  ansible.builtin.template:
+    src: ganesha.conf.j2
+    dest: /etc/ganesha/ganesha.conf
+    owner: root
+    mode: "0644"
+
+- name: Enable ganesha-nfs
+  ansible.builtin.systemd_service:
+    name: nfs-ganesha
+    enabled: true
+    state: started
+    masked: false
+
+- name: Update fstab
+  ansible.posix.mount:
+    path: /data/pv
+    src: "{{ ansible_default_ipv4.address }}:/gvol1"
+    fstype: glusterfs
+    opts: 'defaults,_netdev'
+    state: "{{ item }}"
+  loop:
+    - present
+    - mounted
+
+- name: Update sysctl
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/s20gnfs.conf
+  loop:
+    - name: net.ipv4.ip_forward
+      value: '1'
+    - name: net.ipv4.ip_nonlocal_bind
+      value: '1'
+
+- name: Install Packages
+  ansible.builtin.package:
+    name: keepalived
+    state: present
+
+- name: Install keepalived.conf template
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    mode: "0644"
+
+- name: Enable keepalived
+  ansible.builtin.systemd_service:
+    name: keepalived
+    enabled: true
+    state: started
+    masked: false
+
+- name: Install Packages
+  ansible.builtin.package:
+    name: haproxy
+    state: present
+
+- name: Install keepalived.conf template
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    mode: "0644"
+
+- name: Enable haproxy
+  ansible.builtin.systemd_service:
+    name: haproxy
+    enabled: true
+    state: started
+    masked: false
+
+- name: Install /etc/rsyslog.d/60.ha.conf
+  ansible.builtin.copy:
+    dest: /etc/rsyslog.d/60.ha.conf
+    content: |
+      local2.*                              /var/log/haproxy.log
+    owner: root
+    mode: "0644"
+  notify: Restart rsyslog
+
+- name: Log rotation for local0
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/haproxy
+    content: |
+      /var/log/haproxy.log {
+          su syslog adm
+          daily
+          rotate 8
+          copytruncate
+          maxsize 100M
+          dateext
+          compress
+          missingok
+      }
+    owner: root
+    mode: "0644"
+
+...
