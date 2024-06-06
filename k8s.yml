@@ -1,7 +1,7 @@
 ---
 
 - name: Kubernetes playbook
-  hosts: all
+  hosts: all:&k8s
   pre_tasks:
     - name: Verify ansible version
       ansible.builtin.assert:

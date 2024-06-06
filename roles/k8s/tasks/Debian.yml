@@ -1,39 +1,5 @@
 ---
 
-- name: Check if k8s is initialised on controller
-  ansible.builtin.stat:
-    path: /etc/kubernetes/admin.conf
-  register: have_k8s_config
-  when: "'k8s_controllers' in group_names"
-
-- name: Include controller bootstrap
-  ansible.builtin.include_tasks: "bootstrap_controller.yml"
-  when:
-    - "'k8s_controllers' in group_names"
-    - not have_k8s_config.stat.exists
-
-- name: Check if k8s is initialised on worker
-  ansible.builtin.stat:
-    path: /etc/kubernetes/kubelet.conf
-  register: have_k8s_config
-  when: "'k8s_nodes' in group_names"
-
-- name: Include node bootstrap
-  ansible.builtin.include_tasks: "bootstrap_nodes.yml"
-  when:
-    - "'k8s_nodes' in group_names"
-    - not have_k8s_config.stat.exists
-
-- name: Update bashrc for my settings
-  ansible.builtin.blockinfile:
-    path: "{{ item }}"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - kubectl completion"
-    block: |
-      source <(kubectl completion bash)
-  loop:
-    - /root/.bashrc
-    - /home/vikashb/.bashrc
-
 - name: Update apt
   ansible.builtin.apt:
     upgrade: true
@@ -124,6 +90,40 @@
 
 - name: Force all notified handlers to run
   ansible.builtin.meta: flush_handlers
+
+- name: Check if k8s is initialised on controller
+  ansible.builtin.stat:
+    path: /etc/kubernetes/admin.conf
+  register: have_k8s_config
+  when: "'k8s_controllers' in group_names"
+
+- name: Include controller bootstrap
+  ansible.builtin.include_tasks: "bootstrap_controller.yml"
+  when:
+    - "'k8s_controllers' in group_names"
+    - not have_k8s_config.stat.exists
+
+- name: Check if k8s is initialised on worker
+  ansible.builtin.stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: have_k8s_config
+  when: "'k8s_nodes' in group_names"
+
+- name: Include node bootstrap
+  ansible.builtin.include_tasks: "bootstrap_nodes.yml"
+  when:
+    - "'k8s_nodes' in group_names"
+    - not have_k8s_config.stat.exists
+
+- name: Update bashrc for my settings
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - kubectl completion"
+    block: |
+      source <(kubectl completion bash)
+  loop:
+    - /root/.bashrc
+    - /home/vikashb/.bashrc
 
 - name: Create ~/.kube directory
   ansible.builtin.file:
