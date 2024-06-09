@@ -7,13 +7,13 @@
 
 - name: Download k8s key
   ansible.builtin.get_url:
-    url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+    url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
     dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
     mode: "0644"
 
 - name: Add Kubernetes apt repository.
   ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /"
     state: present
 
 - name: Run the equivalent of "apt-get update"
@@ -29,6 +29,7 @@
     - containerd
     - kubeadm
     - kubelet
+    - apparmor-utils
 
 - name: Mark as hold
   ansible.builtin.dpkg_selections:
@@ -80,6 +81,7 @@
     mode: "0755"
     owner: root
 
+# From containerd config default > /etc/containerd/config.toml
 - name: Copy containerd config
   ansible.builtin.copy:
     src: config.toml

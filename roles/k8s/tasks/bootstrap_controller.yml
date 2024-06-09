@@ -12,10 +12,56 @@
     - bootrap_host == inventory_hostname
     - not have_k8s_config.stat.exists
 
-- name: Install the Calico Network Add-On
+- name: Create ~/.kube directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: vikashb
+  loop:
+    - /home/vikashb/.kube
+    - /root/.kube
+
+- name: Copy /etc/kubernetes/admin.conf to $HOME/.kube/config
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ item }}"
+    owner: vikashb
+    mode: "0644"
+    remote_src: true
+  loop:
+    - /home/vikashb/.kube/config
+    - /root/.kube/config
+  when:
+    - "'k8s_controllers' in group_names"
+    - bootrap_host == inventory_hostname
+
+- name: Enable strict arp in kube-proxy
+  ansible.builtin.shell: 
+    cmd: >
+      kubectl get configmap kube-proxy -n kube-system -o yaml
+      | sed -e "s/strictARP: false/strictARP: true/"
+      | kubectl apply -f - -n kube-system
+    chdir: /tmp/
+  when:
+    - "'k8s_controllers' in group_names"
+    - bootrap_host == inventory_hostname
+
+- name: Set maxPerCore to 0
+  ansible.builtin.shell: 
+    cmd: >
+      kubectl get configmap kube-proxy -n kube-system -o yaml
+      | sed -e "s/maxPerCore: null/maxPerCore: 0/"
+      | kubectl apply -f - -n kube-system
+    chdir: /tmp/
+  when:
+    - "'k8s_controllers' in group_names"
+    - bootrap_host == inventory_hostname
+
+- name: Install the flannel Network addon
   ansible.builtin.command: >
     kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f
-    https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml
+    https://github.com/flannel-io/flannel/releases/latest/download/kube-flannel.yml
   changed_when: false
   when:
     - "'k8s_controllers' in group_names"
@@ -33,13 +79,20 @@
     - not have_k8s_config.stat.exists
 
 - name: Get Join Command
-  ansible.builtin.command: kubeadm token create --print-join-command --ttl=10m
+  ansible.builtin.command: kubeadm token create --print-join-command --ttl=30m
   register: k8s_join
   delegate_to: "{{ bootrap_host }}"
   changed_when: false
   when:
     - "'k8s' in group_names"
     - bootrap_host != inventory_hostname
+
+- name: Wait for 6443/tcp on bootstrap node
+  wait_for: "host={{ bootrap_host }} port=6443 timeout=1"
+  when:
+    - "'k8s_controllers' in group_names"
+    - bootrap_host != inventory_hostname
+    - not have_k8s_config.stat.exists
 
 - name: Controllers join if required
   ansible.builtin.command: >
@@ -50,6 +103,15 @@
     - "'k8s_controllers' in group_names"
     - bootrap_host != inventory_hostname
     - not have_k8s_config.stat.exists
+
+- name: Copy /etc/kubernetes/admin.conf to $HOME/.kube/config
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/vikashb/.kube/config
+    owner: vikashb
+    mode: "0644"
+    remote_src: true
+  when: "'k8s_controllers' in group_names"
 
 - name: Download helm key
   ansible.builtin.get_url:
@@ -72,12 +134,22 @@
     state: present
 
 - name: Ingress
-  ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.4/config/manifests/metallb-native.yaml
+  ansible.builtin.command: kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.14.5/config/manifests/metallb-native.yaml
   delegate_to: "{{ bootrap_host }}"
   changed_when: false
   when:
     - "'k8s' in group_names"
     - bootrap_host == inventory_hostname
+
+- name: Create memberlist secret for metallb
+  ansible.builtin.command: >
+    kubectl create secret generic -n metallb-system memberlist 
+      --from-literal=secretkey="$(openssl rand -base64 128)"
+  changed_when: false
+  when:
+    - "'k8s_controllers' in group_names"
+    - bootrap_host == inventory_hostname
+    - not have_k8s_config.stat.exists
 
 - name: Install kubectl-convert
   ansible.builtin.copy:
@@ -97,6 +169,16 @@
     - l2-advert.yaml
     - dashboard.yaml
     - dashboard.adminuser.yml
+
+- name: Untaint all nodes
+  ansible.builtin.command: kubectl taint nodes  {{ item }} node-role.kubernetes.io/control-plane-
+  loop:
+    - u22-k8s-cp-1
+    - u22-k8s-cp-2
+    - u22-k8s-cp-3
+  when:
+    - "'k8s' in group_names"
+    - bootrap_host == inventory_hostname
 
 - name: Install
   ansible.builtin.command: kubectl apply -f /tmp/{{ item }}
