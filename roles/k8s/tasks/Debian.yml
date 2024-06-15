@@ -30,6 +30,8 @@
     - kubeadm
     - kubelet
     - apparmor-utils
+    - python3-kubernetes
+    - python3-jmespath
 
 - name: Mark as hold
   ansible.builtin.dpkg_selections:
@@ -81,13 +83,34 @@
     mode: "0755"
     owner: root
 
-# From containerd config default > /etc/containerd/config.toml
-- name: Copy containerd config
-  ansible.builtin.copy:
-    src: config.toml
-    dest: /etc/containerd/config.toml
-    mode: "0644"
-    owner: root
+- name: Check if containerd is configured
+  ansible.builtin.stat:
+    path: /etc/containerd/config.toml
+  register: have_containerd_config
+  when: "'k8s_controllers' in group_names"
+
+- name: Install default containerd config
+  ansible.builtin.command: >
+    containerd config default > /etc/containerd/config.toml
+  args:
+    creates: /etc/containerd/config.toml
+  changed_when: false
+  when:
+    - "'k8s_controllers' in group_names"
+    - not have_containerd_config.stat.exists
+
+- name: Enable SystemdCgroup
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: '(\s+)SystemdCgroup = false'
+    replace: '\1SystemdCgroup = true'
+  notify: Restart containerd
+
+- name: Enable SystemdCgroup
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: '(\s+)sandbox_image = "registry.k8s.io/pause:3.8"'
+    replace: '\1sandbox_image = "registry.k8s.io/pause:3.9"'
   notify: Restart containerd
 
 - name: Force all notified handlers to run
@@ -104,6 +127,9 @@
   when:
     - "'k8s_controllers' in group_names"
     - not have_k8s_config.stat.exists
+
+- name: End
+  ansible.builtin.meta: end_host
 
 - name: Check if k8s is initialised on worker
   ansible.builtin.stat:

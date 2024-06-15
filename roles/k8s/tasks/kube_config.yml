@@ -1,0 +1,24 @@
+---
+
+- name: Create ~/.kube directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0700"
+    owner: vikashb
+  loop:
+    - /home/vikashb/.kube
+    - /root/.kube
+
+- name: Copy /etc/kubernetes/admin.conf to $HOME/.kube/config
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ item }}"
+    owner: vikashb
+    mode: "0600"
+    remote_src: true
+  loop:
+    - /home/vikashb/.kube/config
+    - /root/.kube/config
+
+...

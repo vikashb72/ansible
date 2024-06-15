@@ -1,0 +1,110 @@
+---
+
+- name: Create kube-proxy update script
+  ansible.builtin.copy:
+    dest: /var/opt/update-kube-proxy.sh
+    content: |
+      #!/bin/bash
+      # Enable strict arp in kube-proxy
+      kubectl get configmap kube-proxy -n kube-system -o yaml \
+      | sed -e "s/strictARP: false/strictARP: true/" \
+      | kubectl apply -f - -n kube-system
+      # Set maxPerCore to 0
+      kubectl get configmap kube-proxy -n kube-system -o yaml \
+      | sed -e "s/maxPerCore: null/maxPerCore: 0/" \
+      | kubectl apply -f - -n kube-system
+      touch /var/opt/update-kube-proxy.done
+    owner: root
+    mode: "0700"
+
+- name: Check if /var/opt/update-kube-proxy.done exists
+  ansible.builtin.stat:
+    path: /var/opt/update-kube-proxy.done
+  register: updated_kube_proxy
+
+- name: Execute /var/opt/update-kube-proxy.sh
+  ansible.builtin.command: /var/opt/update-kube-proxy.sh
+  args:
+    creates: /var/opt/update-kube-proxy.done
+  register: update_kube_proxy
+  changed_when: update_kube_proxy.rc == 0
+
+- name: Create the metallb-system namespace
+  kubernetes.core.k8s:
+    name: metallb-system
+    api_version: v1
+    kind: Namespace
+    state: present
+    definition:
+      metadata:
+        lables:
+          pod-security.kubernetes.io/enforce: privileged
+          pod-security.kubernetes.io/audit: privileged
+          pod-security.kubernetes.io/warn: privileged
+
+- name: Copy configs
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/var/opt/{{ item }}"
+    owner: root
+    mode: "0644"
+  loop:
+    - ipaddresses_pools.yaml
+    - l2-advert.yaml
+
+- name: Create memberlist secret for metallb
+  ansible.builtin.command: >
+    kubectl create secret generic -n metallb-system metallb-memberlist
+    --from-literal=secretkey="$(openssl rand -base64 128)"
+  register: create_secret
+  changed_when: create_secret.rc == 0
+
+- name: Add metallb repo
+  kubernetes.core.helm_repository:
+    name: metallb
+    repo_url: https://metallb.github.io/metallb
+
+- name: Deploy flannel
+  kubernetes.core.helm:
+    name: metallb
+    release_namespace: metallb-system
+    chart_ref: metallb/metallb
+    set_values:
+      - value: "podCidr={{ pod_cidr_nw }}"
+        value_type: string
+
+- name: Remove taint from host
+  kubernetes.core.k8s_taint:
+    state: absent
+    name: "{{ inventory_hostname }}"
+    taints:
+      - effect: NoSchedule
+        key: "node-role.kubernetes.io/control-plane"
+
+- name: Wait for 7472/tcp on bootstrap node
+  ansible.builtin.wait_for:
+    host: "{{ ansible_default_ipv4.address }}"
+    port: 7472
+    delay: 2
+
+- name: Wait until metallb-controller is up
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: metallb-system
+  register: pod_list
+  until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+
+- name: Sleep for 10 seconds and continue with play
+  ansible.builtin.wait_for:
+    timeout: 10
+
+- name: Apply metallb values to the cluster.
+  kubernetes.core.k8s:
+    state: present
+    src: "/var/opt/{{ item }}"
+  loop:
+    - ipaddresses_pools.yaml
+    - l2-advert.yaml
+
+...

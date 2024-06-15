@@ -1,0 +1,15 @@
+---
+
+- name: Add kubernetes-dashboard repo
+  kubernetes.core.helm_repository:
+    name: kubernetes-dashboard
+    repo_url: https://kubernetes.github.io/dashboard/
+
+- name: Deploy kubernetes-dashboard
+  kubernetes.core.helm:
+    name: kubernetes-dashboard
+    release_namespace: kubernetes-dashboard
+    chart_ref: kubernetes-dashboard/kubernetes-dashboard
+    create_namespace: true
+
+...
