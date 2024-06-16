@@ -14,5 +14,6 @@
     - bashrc
     - common_packages
     - timezone
+    - resolved
 
 ...
