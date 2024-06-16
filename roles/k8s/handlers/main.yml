@@ -4,4 +4,6 @@
   ansible.builtin.service:
     name: containerd
     state: restarted
+    enabled: true
+
 ...

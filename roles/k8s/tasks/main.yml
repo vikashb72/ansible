@@ -8,6 +8,7 @@
     - bashrc
     - timezone
     - disable_swap
+    - resolved
 
 - name: Process OS Family Config
   ansible.builtin.include_tasks: "{{ ansible_os_family }}.yml"

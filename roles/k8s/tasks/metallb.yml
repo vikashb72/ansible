@@ -2,7 +2,7 @@
 
 - name: Create kube-proxy update script
   ansible.builtin.copy:
-    dest: /var/opt/update-kube-proxy.sh
+    dest: /var/opt/k8s/update-kube-proxy.sh
     content: |
       #!/bin/bash
       # Enable strict arp in kube-proxy
@@ -13,19 +13,19 @@
       kubectl get configmap kube-proxy -n kube-system -o yaml \
       | sed -e "s/maxPerCore: null/maxPerCore: 0/" \
       | kubectl apply -f - -n kube-system
-      touch /var/opt/update-kube-proxy.done
+      touch /var/opt/k8s/update-kube-proxy.done
     owner: root
     mode: "0700"
 
-- name: Check if /var/opt/update-kube-proxy.done exists
+- name: Check if /var/opt/k8s/update-kube-proxy.done exists
   ansible.builtin.stat:
-    path: /var/opt/update-kube-proxy.done
+    path: /var/opt/k8s/update-kube-proxy.done
   register: updated_kube_proxy
 
-- name: Execute /var/opt/update-kube-proxy.sh
-  ansible.builtin.command: /var/opt/update-kube-proxy.sh
+- name: Execute /var/opt/k8s/update-kube-proxy.sh
+  ansible.builtin.command: /var/opt/k8s/update-kube-proxy.sh
   args:
-    creates: /var/opt/update-kube-proxy.done
+    creates: /var/opt/k8s/update-kube-proxy.done
   register: update_kube_proxy
   changed_when: update_kube_proxy.rc == 0
 
@@ -45,7 +45,7 @@
 - name: Copy configs
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: "/var/opt/{{ item }}"
+    dest: "/var/opt/k8s/{{ item }}"
     owner: root
     mode: "0644"
   loop:
@@ -102,7 +102,7 @@
 - name: Apply metallb values to the cluster.
   kubernetes.core.k8s:
     state: present
-    src: "/var/opt/{{ item }}"
+    src: "/var/opt/k8s/{{ item }}"
   loop:
     - ipaddresses_pools.yaml
     - l2-advert.yaml

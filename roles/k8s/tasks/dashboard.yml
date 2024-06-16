@@ -12,4 +12,26 @@
     chart_ref: kubernetes-dashboard/kubernetes-dashboard
     create_namespace: true
 
+- name: Copy configs
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/var/opt/k8s/{{ item }}"
+    owner: root
+    mode: "0644"
+  loop:
+    - dashboard.adminuser.yml
+
+- name: Apply adminuser values to the cluster.
+  kubernetes.core.k8s:
+    state: present
+    src: "/var/opt/k8s/{{ item }}"
+  loop:
+    - dashboard.adminuser.yml
+
+- name: Create token
+  ansible.builtin.command: >
+    kubectl -n kubernetes-dashboard create token admin-user
+  register: create_token
+  changed_when: create_token.rc == 0
+
 ...
