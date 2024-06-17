@@ -23,7 +23,7 @@ ip4_addr=192.168.0.13 gw4=192.168.0.1 runasap=0 astart=0 \
 interface=re1 imgtype=zvol
 
 
-## Create gluster vms
+## Create k8s vms
 
 cbsd bcreate jname=u22-k8s-cp-1 imgsize=64g vm_cpus=2 vm_ram=4g \
 vm_os_type=linux vm_os_profile=ubuntuserver-amd64-22 \
