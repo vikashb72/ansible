@@ -1,12 +1,12 @@
 ---
 
-gluster:
+glusterfs_nfs_gluster:
   bootstrap: 192.168.0.61
   nodes:
     - 192.168.0.62
     - 192.168.0.63
 
-keepalived:
+glusterfs_nfs_keepalived:
   initial_master: 192.168.0.61
   floating_ip: 192.168.0.60
   peers:

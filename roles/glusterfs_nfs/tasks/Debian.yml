@@ -61,14 +61,14 @@
       - 192.168.0.61
       - 192.168.0.62
       - 192.168.0.63
-  when: ansible_default_ipv4.address == gluster.bootstrap
+  when: ansible_default_ipv4.address == glusterfs_nfs_gluster.bootstrap
 
 - name: Run probe on nodes
   gluster.gluster.gluster_peer:
     state: present
     nodes:
       - 192.168.0.61
-  when: ansible_default_ipv4.address != gluster.bootstrap
+  when: ansible_default_ipv4.address != glusterfs_nfs_gluster.bootstrap
 
 - name: Create gluster volume
   gluster.gluster.gluster_volume:
@@ -80,18 +80,18 @@
       - 192.168.0.61
       - 192.168.0.62
       - 192.168.0.63
-  when: ansible_default_ipv4.address == gluster.bootstrap
+  when: ansible_default_ipv4.address == glusterfs_nfs_gluster.bootstrap
 
 - name: Start gluster volume
   gluster.gluster.gluster_volume:
     state: started
     name: gvol1
-  when: ansible_default_ipv4.address == gluster.bootstrap
+  when: ansible_default_ipv4.address == glusterfs_nfs_gluster.bootstrap
 
 - name: Start gluster volume
   ansible.builtin.command: gluster volume set gvol1 nfs.disable on
   changed_when: false
-  when: ansible_default_ipv4.address == gluster.bootstrap
+  when: ansible_default_ipv4.address == glusterfs_nfs_gluster.bootstrap
 
 - name: Install Packages
   ansible.builtin.package:

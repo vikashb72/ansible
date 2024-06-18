@@ -70,7 +70,7 @@
     release_namespace: metallb-system
     chart_ref: metallb/metallb
     set_values:
-      - value: "podCidr={{ pod_cidr_nw }}"
+      - value: "podCidr={{ k8s_pod_cidr_nw }}"
         value_type: string
 
 - name: Remove taint from host

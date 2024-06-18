@@ -22,7 +22,7 @@
     release_namespace: kube-flannel
     chart_ref: flannel/flannel
     set_values:
-      - value: "podCidr={{ pod_cidr_nw }}"
+      - value: "podCidr={{ k8s_pod_cidr_nw }}"
         value_type: string
 
 ...

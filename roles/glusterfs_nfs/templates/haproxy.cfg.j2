@@ -22,7 +22,7 @@ defaults
     maxconn                 3000
 
 frontend nfs-in
-    bind {{ keepalived.floating_ip }}:2049
+    bind {{ glusterfs_nfs_keepalived.floating_ip }}:2049
     mode tcp
     option tcplog
     default_backend             nfs-back
@@ -30,6 +30,6 @@ frontend nfs-in
 
 backend nfs-back
     balance     roundrobin
-{% for peer in keepalived.peers %}
+{% for peer in glusterfs_nfs_keepalived.peers %}
     server {{ peer }} {{ peer }}:2049 check
 {% endfor %}

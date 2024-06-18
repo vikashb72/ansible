@@ -2,12 +2,12 @@
 
 - name: Initialise k8s (if required) on primary controller
   ansible.builtin.shell: >
-    kubeadm init --pod-network-cidr={{ pod_cidr_nw }}
-    --control-plane-endpoint={{ bootrap_host }}
+    kubeadm init --pod-network-cidr={{ k8s_pod_cidr_nw }}
+    --control-plane-endpoint={{ k8s_bootstrap_host }}
     --upload-certs
   changed_when: false
   register: k8s_init
-  when: bootrap_host == inventory_hostname
+  when: k8s_bootstrap_host == inventory_hostname
 
 - name: Check if helm is installed
   ansible.builtin.stat:
@@ -17,50 +17,50 @@
 - name: Install helm on bootstrap host
   ansible.builtin.include_tasks: helm.yml
   when:
-    - bootrap_host == inventory_hostname
+    - k8s_bootstrap_host == inventory_hostname
     - not have_helm.stat.exists
 
 - name: Install kube config on bootstrap host
   ansible.builtin.include_tasks: kube_config.yml
-  when: bootrap_host == inventory_hostname
+  when: k8s_bootstrap_host == inventory_hostname
 
 - name: Install flannel on bootstrap host
   ansible.builtin.include_tasks: flannel.yml
   when:
-    - bootrap_host == inventory_hostname
+    - k8s_bootstrap_host == inventory_hostname
 
 - name: Install metallb on bootstrap host
   ansible.builtin.include_tasks: metallb.yml
   when:
-    - bootrap_host == inventory_hostname
+    - k8s_bootstrap_host == inventory_hostname
 
 - name: Get cert
   ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
   register: k8s_cert
-  delegate_to: "{{ bootrap_host }}"
+  delegate_to: "{{ k8s_bootstrap_host }}"
   changed_when: false
   when:
     - "'k8s_controllers' in group_names"
-    - bootrap_host != inventory_hostname
+    - k8s_bootstrap_host != inventory_hostname
     - not have_k8s_config.stat.exists
 
 - name: Get Join Command
   ansible.builtin.command: kubeadm token create --print-join-command --ttl=30m
   register: k8s_join
-  delegate_to: "{{ bootrap_host }}"
+  delegate_to: "{{ k8s_bootstrap_host }}"
   changed_when: false
   when:
     - "'k8s' in group_names"
-    - bootrap_host != inventory_hostname
+    - k8s_bootstrap_host != inventory_hostname
 
 - name: Wait for 6443/tcp on bootstrap node
   ansible.builtin.wait_for:
-    host: "{{ bootrap_host }}"
+    host: "{{ k8s_bootstrap_host }}"
     port: 6443
     delay: 2
   when:
     - "'k8s_controllers' in group_names"
-    - bootrap_host != inventory_hostname
+    - k8s_bootstrap_host != inventory_hostname
 
 - name: Controllers join if required
   ansible.builtin.command: >
@@ -69,14 +69,14 @@
   changed_when: false
   when:
     - "'k8s_controllers' in group_names"
-    - bootrap_host != inventory_hostname
+    - k8s_bootstrap_host != inventory_hostname
     - not have_k8s_config.stat.exists
 
 - name: Install kube config on bootstrap host
   ansible.builtin.include_tasks: kube_config.yml
   when:
     - "'k8s_controllers' in group_names"
-    - bootrap_host != inventory_hostname
+    - k8s_bootstrap_host != inventory_hostname
 
 - name: Remove taint from host
   kubernetes.core.k8s_taint:
@@ -88,7 +88,7 @@
 
 - name: Install dashboard on bootstrap host
   ansible.builtin.include_tasks: dashboard.yml
-  when: bootrap_host == inventory_hostname
+  when: k8s_bootstrap_host == inventory_hostname
 
 - name: Create add tools script
   ansible.builtin.copy:
@@ -114,13 +114,13 @@
       touch /var/opt/k8s/add-tools.done
     owner: root
     mode: "0700"
-  when: bootrap_host == inventory_hostname
+  when: k8s_bootstrap_host == inventory_hostname
 
 - name: Check if /var/opt/k8s/update-kube-proxy.done exists
   ansible.builtin.stat:
     path: /var/opt/k8s/add-tools.sh
   register: updated_kube_proxy
-  when: bootrap_host == inventory_hostname
+  when: k8s_bootstrap_host == inventory_hostname
 
 - name: Execute /var/opt/k8s/add-tools.sh
   ansible.builtin.command: /var/opt/k8s/add-tools.sh
@@ -128,6 +128,6 @@
     creates: /var/opt/k8s/add-tools.done
   register: update_kube_proxy
   changed_when: update_kube_proxy.rc == 0
-  when: bootrap_host == inventory_hostname
+  when: k8s_bootstrap_host == inventory_hostname
 
 ...

@@ -32,14 +32,14 @@ vrrp_instance VI_1 {
     advert_int 1
     unicast_src_ip {{ ansible_default_ipv4.address }}/24
     unicast_peer {
-{% for peer in keepalived.peers %}
+{% for peer in glusterfs_nfs_keepalived.peers %}
 {% if peer != ansible_default_ipv4.address %}
        {{ peer }}/24
 {% endif %}
 {% endfor %}
     }
     virtual_ipaddress {
-        {{ keepalived.floating_ip }}/24
+        {{ glusterfs_nfs_keepalived.floating_ip }}/24
     }
 
     authentication {

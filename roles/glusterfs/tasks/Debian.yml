@@ -13,7 +13,7 @@
   community.general.filesystem:
     fstype: xfs
     dev: "{{ item.disk }}"
-  loop: "{{ gluster.vols }}"
+  loop: "{{ glusterfs_config.vols }}"
 
 - name: Create xfs mount directory
   ansible.builtin.file:
@@ -21,7 +21,7 @@
     state: directory
     mode: "0755"
     owner: root
-  loop: "{{ gluster.vols }}"
+  loop: "{{ glusterfs_config.vols }}"
 
 - name: Create gfs mount directory
   ansible.builtin.file:
@@ -29,7 +29,7 @@
     state: directory
     mode: "0755"
     owner: root
-  loop: "{{ gluster.vols }}"
+  loop: "{{ glusterfs_config.vols }}"
 
 - name: Update fstab for xfs mount
   ansible.posix.mount:
@@ -37,7 +37,7 @@
     src: "{{ item.disk }}"
     fstype: xfs
     state: present
-  loop: "{{ gluster.vols }}"
+  loop: "{{ glusterfs_config.vols }}"
 
 - name: Mount the xfs disk
   ansible.posix.mount:
@@ -45,7 +45,7 @@
     src: "{{ item.disk }}"
     fstype: xfs
     state: mounted
-  loop: "{{ gluster.vols }}"
+  loop: "{{ glusterfs_config.vols }}"
 
 - name: Create brick dir
   ansible.builtin.file:
@@ -53,7 +53,7 @@
     state: directory
     mode: "0755"
     owner: root
-  loop: "{{ gluster.vols }}"
+  loop: "{{ glusterfs_config.vols }}"
 
 - name: Enable glusterd
   ansible.builtin.systemd_service:
@@ -66,8 +66,8 @@
   gluster.gluster.gluster_peer:
     state: present
     nodes: "{{ item }}"
-  loop: "{{ gluster.nodes }}"
-  when: ansible_default_ipv4.address == gluster.bootstrap
+  loop: "{{ glusterfs_config.nodes }}"
+  when: ansible_default_ipv4.address == glusterfs_config.bootstrap
 
 - name: Create gluster volume
   gluster.gluster.gluster_volume:
@@ -75,9 +75,9 @@
     name: "{{ item.name }}"
     brick: "{{ item.brick }}"
     replicas: 3
-    cluster: "{{ gluster.nodes }}"
-  loop: "{{ gluster.vols }}"
-  when: ansible_default_ipv4.address == gluster.bootstrap
+    cluster: "{{ glusterfs_config.nodes }}"
+  loop: "{{ glusterfs_config.vols }}"
+  when: ansible_default_ipv4.address == glusterfs_config.bootstrap
 
 - name: Update fstab for gluster mount
   ansible.posix.mount:
@@ -85,8 +85,8 @@
     fstype: glusterfs
     path: "{{ item.mount.gfs }}"
     src: "{{ ansible_default_ipv4.address }}:/{{ item.name }}"
-    opts: "rw,_netdev,backup-volfile-servers={{ gluster.nodes | join(':') }}"
-  loop: "{{ gluster.vols }}"
+    opts: "rw,_netdev,backup-volfile-servers={{ glusterfs_config.nodes | join(':') }}"
+  loop: "{{ glusterfs_config.vols }}"
 
 - name: Mount gluster mount point
   ansible.posix.mount:
@@ -94,8 +94,8 @@
     fstype: glusterfs
     path: "{{ item.mount.gfs }}"
     src: "{{ ansible_default_ipv4.address }}:/{{ item.name }}"
-    opts: "rw,_netdev,backup-volfile-servers={{ gluster.nodes | join(':') }}"
-  loop: "{{ gluster.vols }}"
+    opts: "rw,_netdev,backup-volfile-servers={{ glusterfs_config.nodes | join(':') }}"
+  loop: "{{ glusterfs_config.vols }}"
 
 - name: Create gfs test directory
   ansible.builtin.file:
@@ -103,6 +103,6 @@
     state: directory
     mode: "0755"
     owner: vikashb
-  loop: "{{ gluster.vols }}"
+  loop: "{{ glusterfs_config.vols }}"
 
 ...
