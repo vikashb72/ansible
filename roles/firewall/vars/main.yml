@@ -1,7 +1,7 @@
 ---
 
 # Map OS family to firewall type task
-firewalls_name:
+firewall_name:
   FreeBSD: pf
   Debian: ufw
   RedHat: firewalld
