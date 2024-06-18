@@ -1,6 +1,10 @@
 [ubuntu_python3:children]
 gfs
 k8s
+mgmt
+
+[mgmt]
+overseer
 
 [gfs]
 u22-gfs-[1:3]

@@ -1,0 +1,15 @@
+---
+
+- name: Add gloo/gloo repo
+  kubernetes.core.helm_repository:
+    name: gloo
+    repo_url: https://storage.googleapis.com/solo-public-helm
+
+- name: Deploy gloo
+  kubernetes.core.helm:
+    name: gloo
+    release_namespace: gloo-system
+    chart_ref: gloo/gloo
+    create_namespace: true
+
+...

@@ -55,7 +55,7 @@
 
 - name: Wait for 6443/tcp on bootstrap node
   ansible.builtin.wait_for:
-    host: "{{ bootrap_host.address }}"
+    host: "{{ bootrap_host }}"
     port: 6443
     delay: 2
   when:
@@ -102,6 +102,15 @@
       chmod 0755 /usr/local/bin/kubectl-convert
       # kustomize
       curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+      # glooctl
+      curl -sL https://run.solo.io/gloo/install | sh
+      mv /root/.gloo/bin/glooctl  .
+      #
+      curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+      sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+      rm argocd-linux-amd64
+      rm -fr /root/.gloo
+      /usr/local/bin/glooctl install gateway
       touch /var/opt/k8s/add-tools.done
     owner: root
     mode: "0700"
