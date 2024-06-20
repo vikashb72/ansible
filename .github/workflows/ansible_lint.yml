@@ -13,6 +13,8 @@ jobs:
     # runs-on: [arc-runner-set-45kw8-runner-c47wk]
     #runs-on: [self-hosted]
     runs-on: arc-runner-set
+    container:
+      image: ubuntu:22.04
     steps:
       - name: get ansible version
         run: ansible --version
