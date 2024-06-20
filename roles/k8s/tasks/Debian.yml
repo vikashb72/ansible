@@ -39,6 +39,7 @@
     - apparmor-utils
     - python3-kubernetes
     - python3-jmespath
+    - nfs-client
 
 - name: Mark as hold
   ansible.builtin.dpkg_selections:

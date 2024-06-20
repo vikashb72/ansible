@@ -130,4 +130,13 @@
   changed_when: update_kube_proxy.rc == 0
   when: k8s_bootstrap_host == inventory_hostname
 
+- name: Install helm on bootstrap host
+  ansible.builtin.include_tasks: helm.yml
+  loop:
+    - dynamic_nfs_provisioning.yml
+    - vault.yml
+    - argo.yml
+#    - gloo.yaml
+  when: k8s_bootstrap_host == inventory_hostname
+
 ...

@@ -23,4 +23,9 @@
     name: helm
     state: present
 
+- name: Add bitnami repo
+  kubernetes.core.helm_repository:
+    name: bitnami
+    repo_url: https://charts.bitnami.com/bitnami
+
 ...
