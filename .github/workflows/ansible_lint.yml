@@ -16,15 +16,6 @@ jobs:
     container:
       image: ubuntu:22.04
     steps:
-#      - name: update apt
-#        run: apt update
-#      - name: install pip3
-#        run: apt install python3-pip
-#      - name: Install ansible
-#        run: pip3 install --include-deps ansible ansible-lint
-#      - name: get ansible version
-#        run: ansible --version
       - uses: actions/checkout@v4
       - name: Run ansible-lint
-        uses: ansible/ansible-lint@v6 # or version tag instead of 'main'
-
+        uses: ansible/ansible-lint@v6 # or version tag instead of 'main'         
