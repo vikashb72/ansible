@@ -31,8 +31,11 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Run a one-line script
-        run: sudo apt install pip3
-
+        run: sudo apt install python3-pip
+        
+      - name: Run a one-line script
+        run: sudo apt install docker
+        
       # Runs a set of commands using the runners shell
       - name: Run a multi-line script
         run: |
