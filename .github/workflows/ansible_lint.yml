@@ -9,7 +9,8 @@ on:
 jobs:
   build:
     name: Ansible Lint # Naming the build is important to use it as a status check
-    runs-on: ubuntu-latest
+    # runs-on: ubuntu-latest
+    runs-on: arc-runner-set
     steps:
       - name: get ansible version
         run: ansible --version
