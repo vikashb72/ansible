@@ -10,7 +10,8 @@ jobs:
   build:
     name: Ansible Lint # Naming the build is important to use it as a status check
     # runs-on: ubuntu-latest
-    runs-on: [arc-runner-set-45kw8-runner-c47wk]
+    # runs-on: [arc-runner-set-45kw8-runner-c47wk]
+    runs-on: [self-hosted]
     steps:
       - name: get ansible version
         run: ansible --version
