@@ -1,0 +1,40 @@
+---
+
+- name: Create add tools script
+  ansible.builtin.copy:
+    dest: /var/opt/k8s/add-tools.sh
+    content: |
+      #!/bin/bash
+      mkdir -p /usr/local/bin
+      cd /usr/local/bin
+      # kubctl-convert
+      curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl-convert"
+      chmod 0755 /usr/local/bin/kubectl-convert
+      # kustomize
+      curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+      # glooctl
+      curl -sL https://run.solo.io/gloo/install | sh
+      mv /root/.gloo/bin/glooctl  .
+      #
+      curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+      sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+      rm argocd-linux-amd64
+      rm -fr /root/.gloo
+      /usr/local/bin/glooctl install gateway
+      touch /var/opt/k8s/add-tools.done
+    owner: root
+    mode: "0700"
+
+- name: Check if /var/opt/k8s/add-tools.done exists
+  ansible.builtin.stat:
+    path: /var/opt/k8s/add-tools.done
+  register: tools_added
+
+- name: Execute /var/opt/k8s/add-tools.sh
+  ansible.builtin.command: /var/opt/k8s/add-tools.sh
+  args:
+    creates: /var/opt/k8s/add-tools.done
+  changed_when: false
+  when: not tools_added.stat.exists
+
+...

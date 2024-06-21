@@ -7,25 +7,9 @@
     mode: "0755"
     owner: root
 
-- name: Update apt
-  ansible.builtin.apt:
-    upgrade: true
-    update_cache: true
-
-- name: Download k8s key
-  ansible.builtin.get_url:
-    url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
-    dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
-    mode: "0644"
-
-- name: Add Kubernetes apt repository.
-  ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /"
-    state: present
-
-- name: Run the equivalent of "apt-get update"
-  ansible.builtin.apt:
-    update_cache: true
+- name: Include apt add repo tasks
+  ansible.builtin.include_tasks:
+    file: "apt_repos.yml"
 
 - name: Install packages
   ansible.builtin.package:
@@ -51,75 +35,9 @@
     - kubelet
     - containerd
 
-- name: Add the modules
-  community.general.modprobe:
-    name: "{{ item }}"
-    state: present
-  loop:
-    - br_netfilter
-    - overlay
-
-- name: Add modules-load
-  ansible.builtin.copy:
-    dest: /etc/modules-load.d/containerd.conf
-    content: |
-      overlay
-      br_netfilter
-    owner: root
-    mode: "0644"
-
-- name: Update sysctl
-  ansible.posix.sysctl:
-    name: "{{ item.name }}"
-    value: "{{ item.value }}"
-    sysctl_set: true
-    state: present
-    reload: true
-    sysctl_file: /etc/sysctl.d/s20k8s.conf
-  loop:
-    - name: net.ipv4.ip_forward
-      value: '1'
-    - name: net.bridge.bridge-nf-call-iptables
-      value: '1'
-    - name: net.bridge.bridge-nf-call-ip6tables
-      value: '1'
-
-- name: Create containerd directory
-  ansible.builtin.file:
-    path: /etc/containerd
-    state: directory
-    mode: "0755"
-    owner: root
-
-- name: Check if containerd is configured
-  ansible.builtin.stat:
-    path: /etc/containerd/config.toml
-  register: have_containerd_config
-
-- name: Install default containerd config
-  ansible.builtin.shell: >
-    containerd config default > /etc/containerd/config.toml
-  args:
-    creates: /etc/containerd/config.toml
-  changed_when: false
-  when: not have_containerd_config.stat.exists
-
-- name: Enable SystemdCgroup
-  ansible.builtin.replace:
-    path: /etc/containerd/config.toml
-    regexp: '(\s+)SystemdCgroup = false'
-    replace: '\1SystemdCgroup = true'
-  notify: Restart containerd
-
-- name: Enable SystemdCgroup
-  ansible.builtin.replace:
-    path: /etc/containerd/config.toml
-    regexp: '(\s+)sandbox_image = "registry.k8s.io/pause:3.8"'
-    replace: '\1sandbox_image = "registry.k8s.io/pause:3.9"'
-  notify: Restart containerd
-
-- name: Force all notified handlers to run
-  ansible.builtin.meta: flush_handlers
+- name: Include containerd tasks
+  ansible.builtin.include_tasks:
+    file: "setup_containerd.yml"
 
 - name: Check if k8s is initialised on controller
   ansible.builtin.stat:
@@ -128,22 +46,49 @@
   when: "'k8s_controllers' in group_names"
 
 - name: Include controller bootstrap
-  ansible.builtin.include_tasks: "bootstrap_controller.yml"
+  ansible.builtin.include_tasks:
+    file: "init_controllers.yml"
   when:
     - "'k8s_controllers' in group_names"
     - not have_k8s_config.stat.exists
 
-- name: Check if k8s is initialised on worker
+- name: Check if k8s is initialised on workers
   ansible.builtin.stat:
     path: /etc/kubernetes/kubelet.conf
   register: have_k8s_config
   when: "'k8s_nodes' in group_names"
 
 - name: Include node bootstrap
-  ansible.builtin.include_tasks: "bootstrap_nodes.yml"
+  ansible.builtin.include_tasks:
+    file: "init_nodes.yml"
   when:
     - "'k8s_nodes' in group_names"
     - not have_k8s_config.stat.exists
+
+- name: Install helm
+  ansible.builtin.package:
+    name: helm
+    state: present
+  when: "'k8s_controllers' in group_names"
+
+- name: Install tools on controllers
+  ansible.builtin.include_tasks:
+    file: "controller_tools.yml"
+  when: "'k8s_controllers' in group_names"
+
+- name: Remove taint from host
+  kubernetes.core.k8s_taint:
+    state: absent
+    name: "{{ inventory_hostname }}"
+    taints:
+      - effect: NoSchedule
+        key: "node-role.kubernetes.io/control-plane"
+  when: "'k8s_controllers' in group_names"
+
+- name: Process on Primary controller
+  ansible.builtin.include_tasks:
+    file: "primary_controller.yml"
+  when: k8s_bootstrap_host == inventory_hostname
 
 - name: Update bashrc for my settings
   ansible.builtin.blockinfile:
@@ -154,22 +99,6 @@
   loop:
     - /root/.bashrc
     - /home/vikashb/.bashrc
-
-- name: Create ~/.kube directory
-  ansible.builtin.file:
-    path: /home/vikashb/.kube
-    state: directory
-    mode: "0755"
-    owner: vikashb
-
-- name: Copy /etc/kubernetes/admin.conf to $HOME/.kube/config
-  ansible.builtin.copy:
-    src: /etc/kubernetes/admin.conf
-    dest: /home/vikashb/.kube/config
-    owner: vikashb
-    mode: "0600"
-    remote_src: true
-  when: "'k8s_controllers' in group_names"
 
 # # kubeadm token list
 #

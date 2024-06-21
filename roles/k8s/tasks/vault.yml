@@ -12,21 +12,6 @@
     chart_ref: hashicorp/vault
     create_namespace: true
 
-- name: Download hashicorp key
-  ansible.builtin.get_url:
-    url: https://apt.releases.hashicorp.com/gpg
-    dest: /etc/apt/keyrings/hashicorp-keyring.asc
-    mode: "0644"
-
-- name: Add Kubernetes apt repository.
-  ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-keyring.asc] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
-    state: present
-
-- name: Run the equivalent of "apt-get update"
-  ansible.builtin.apt:
-    update_cache: true
-
 - name: Install packages
   ansible.builtin.package:
     name: vault

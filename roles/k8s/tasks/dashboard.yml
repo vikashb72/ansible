@@ -21,17 +21,9 @@
   loop:
     - dashboard.adminuser.yml
 
-- name: Apply adminuser values to the cluster.
+- name: Create dashboard-admin ServiceAccount and ClusterRoleBinding
   kubernetes.core.k8s:
     state: present
-    src: "/var/opt/k8s/{{ item }}"
-  loop:
-    - dashboard.adminuser.yml
-
-- name: Create token
-  ansible.builtin.command: >
-    kubectl -n kubernetes-dashboard create token admin-user
-  register: create_token
-  changed_when: create_token.rc == 0
+    src: /var/opt/k8s/dashboard.adminuser.yml
 
 ...

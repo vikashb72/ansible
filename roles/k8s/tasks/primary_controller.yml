@@ -1,0 +1,57 @@
+---
+
+- name: Check if flannel is installed
+  kubernetes.core.helm_info:
+    name: flannel
+    release_namespace: kube-flannel
+  register: flannel_info
+
+- name: Install flannel
+  ansible.builtin.include_tasks:
+    file: "flannel.yml"
+  when: flannel_info.status.status | default('missing') != 'deployed'
+
+- name: Check if metallb is installed
+  kubernetes.core.helm_info:
+    name: metallb
+    release_namespace: metallb-system
+  register: metallb_info
+
+- name: Install metallb
+  ansible.builtin.include_tasks:
+    file: "metallb.yml"
+  when: metallb_info.status.status | default('missing') != 'deployed'
+
+- name: Check if dashboard is installed
+  kubernetes.core.helm_info:
+    name: kubernetes-dashboard
+    release_namespace: kubernetes-dashboard
+  register: dashboard_info
+
+- name: Install dashboard
+  ansible.builtin.include_tasks:
+    file: "dashboard.yml"
+  when: dashboard_info.status.status | default('missing') != 'deployed'
+
+- name: Check if nfs-subdir-external-provisioner is installed
+  kubernetes.core.helm_info:
+    name: nfs-subdir-external-provisioner
+    release_namespace: nfs-provisioning
+  register: nfs_info
+
+- name: Install dashboard
+  ansible.builtin.include_tasks:
+    file: "dynamic_nfs_provisioning.yml"
+  when: nfs_info.status.status | default('missing') != 'deployed'
+
+- name: Add bitnami repo
+  kubernetes.core.helm_repository:
+    name: bitnami
+    repo_url: https://charts.bitnami.com/bitnami
+
+# to do:
+# vault
+# argo
+# gloo
+
+...

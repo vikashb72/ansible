@@ -1,0 +1,52 @@
+---
+
+- name: Initialise k8s (if required) on primary controller
+  ansible.builtin.shell: >
+    kubeadm init --pod-network-cidr={{ k8s_pod_cidr_nw }}
+    --control-plane-endpoint={{ k8s_bootstrap_host }}
+    --upload-certs
+  changed_when: false
+  register: k8s_init
+  when: k8s_bootstrap_host == inventory_hostname
+
+- name: Get cert
+  ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+  register: k8s_cert
+  delegate_to: "{{ k8s_bootstrap_host }}"
+  changed_when: false
+  when:
+    - "'k8s_controllers' in group_names"
+    - k8s_bootstrap_host != inventory_hostname
+
+- name: Get Join Command
+  ansible.builtin.command: kubeadm token create --print-join-command --ttl=30m
+  register: k8s_join
+  delegate_to: "{{ k8s_bootstrap_host }}"
+  changed_when: false
+  when:
+    - "'k8s' in group_names"
+    - k8s_bootstrap_host != inventory_hostname
+
+- name: Wait for 6443/tcp on bootstrap node
+  ansible.builtin.wait_for:
+    host: "{{ k8s_bootstrap_host }}"
+    port: 6443
+    delay: 2
+  when:
+    - "'k8s_controllers' in group_names"
+    - k8s_bootstrap_host != inventory_hostname
+
+- name: Controllers join if required
+  ansible.builtin.command: >
+    {{ k8s_join.stdout }} --control-plane
+    --certificate-key {{ k8s_cert.stdout_lines[2] }}
+  changed_when: false
+  when:
+    - "'k8s_controllers' in group_names"
+    - k8s_bootstrap_host != inventory_hostname
+    - not have_k8s_config.stat.exists
+
+- name: Install kube config on bootstrap host
+  ansible.builtin.include_tasks: kube_config.yml
+
+...

@@ -11,6 +11,7 @@
     - resolved
 
 - name: Process OS Family Config
-  ansible.builtin.include_tasks: "{{ ansible_os_family }}.yml"
+  ansible.builtin.include_tasks:
+    file: "{{ ansible_os_family }}.yml"
 
 ...

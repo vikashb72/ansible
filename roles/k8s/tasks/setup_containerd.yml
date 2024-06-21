@@ -1,0 +1,73 @@
+---
+
+- name: Add the modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - br_netfilter
+    - overlay
+
+- name: Add modules-load
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/containerd.conf
+    content: |
+      overlay
+      br_netfilter
+    owner: root
+    mode: "0644"
+
+- name: Update sysctl
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+    sysctl_file: /etc/sysctl.d/s20k8s.conf
+  loop:
+    - name: net.ipv4.ip_forward
+      value: '1'
+    - name: net.bridge.bridge-nf-call-iptables
+      value: '1'
+    - name: net.bridge.bridge-nf-call-ip6tables
+      value: '1'
+
+- name: Create containerd directory
+  ansible.builtin.file:
+    path: /etc/containerd
+    state: directory
+    mode: "0755"
+    owner: root
+
+- name: Check if containerd is configured
+  ansible.builtin.stat:
+    path: /etc/containerd/config.toml
+  register: have_containerd_config
+
+- name: Install default containerd config
+  ansible.builtin.shell: >
+    containerd config default > /etc/containerd/config.toml
+  args:
+    creates: /etc/containerd/config.toml
+  changed_when: false
+  when: not have_containerd_config.stat.exists
+
+- name: Enable SystemdCgroup
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: '(\s+)SystemdCgroup = false'
+    replace: '\1SystemdCgroup = true'
+  notify: Restart containerd
+
+- name: Update registry.k8s.io/pause version
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: '(\s+)sandbox_image = "registry.k8s.io/pause:3.8"'
+    replace: '\1sandbox_image = "registry.k8s.io/pause:3.9"'
+  notify: Restart containerd
+
+- name: Force all notified handlers to run
+  ansible.builtin.meta: flush_handlers
+
+...
