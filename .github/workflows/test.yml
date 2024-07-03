@@ -15,11 +15,29 @@ jobs:
   build:
     #runs-on: ubuntu-latest
     runs-on: arc-runner-set
+    container:
+      image: ttl.sh/b-23-cdc2-2100-4e43-b86d-7aa714de3830:4h
     steps:
     
       - uses: actions/checkout@v4
 
-      # Runs a single command using the runners shell
-      - name: Run a one-line script
-        run: echo "one line"
-        
+      - name: debug
+        run: |
+          buildah unshare cat /proc/self/uid_map
+          buildah version
+          buildah info
+
+      - name: Build Image
+        uses: redhat-actions/buildah-build@v2
+        id: buildah-build-image
+        with:
+          image: "${{ env.IMAGE_URL }}"
+          tags: "${{ env.IMAGE_URL }}:1.0.${{ github.run_number }}"
+          containerfiles: |
+            ./Dockerfile
+          build-args: |
+            STAGE=production
+          extra-args: |
+            --storage-driver vfs
+            --log-level debug
+            --isolation chroot
