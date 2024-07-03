@@ -24,8 +24,8 @@ jobs:
       - name: debug
         run: |
           buildah unshare cat /proc/self/uid_map
-          buildah version
-          buildah info
+          buildah --storage-driver vfs version
+          buildah --storage-driver vfs info
 
       - name: Build Image
         uses: redhat-actions/buildah-build@v2
