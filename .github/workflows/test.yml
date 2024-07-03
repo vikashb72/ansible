@@ -31,8 +31,8 @@ jobs:
         uses: redhat-actions/buildah-build@v2
         id: buildah-build-image
         with:
-          image: "${{ env.IMAGE_URL }}"
-          tags: "${{ env.IMAGE_URL }}:1.0.${{ github.run_number }}"
+          image: ttl.sh/85aaf77f-0573-4693-8f27-a58b2f06c7e8
+          tags: ttl.sh/85aaf77f-0573-4693-8f27-a58b2f06c7e8:5m
           containerfiles: |
             ./Dockerfile
           build-args: |
