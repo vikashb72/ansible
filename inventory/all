@@ -2,6 +2,10 @@
 gfs
 k8s
 mgmt
+docker
+
+[docker]
+u22-docker
 
 [mgmt]
 overseer

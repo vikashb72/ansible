@@ -53,5 +53,8 @@
 # vault
 # argo
 # gloo
+# git clone https://github.com/luksa/kubectl-plugins $HOME/kubectl-plugins
+# export PATH=$PATH:$HOME/kubectl-plugins
+
 
 ...

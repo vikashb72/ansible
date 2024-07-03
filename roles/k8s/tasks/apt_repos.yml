@@ -42,6 +42,11 @@
     state: present
   when: "'k8s_controllers' in group_names"
 
+- name: Add yq apt repository.
+  ansible.builtin.apt_repository:
+    repo: "ppa:rmescandon/yq"
+    state: present
+
 - name: Run the equivalent of "apt-get update"
   ansible.builtin.apt:
     update_cache: true

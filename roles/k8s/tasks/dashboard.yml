@@ -26,4 +26,8 @@
     state: present
     src: /var/opt/k8s/dashboard.adminuser.yml
 
+# kubectl edit service/kubernetes-dashboard-kong-proxy -n kubernetes-dashboard
+# change type: ClusterIP to type: LoadBalancer
+# kubectl -n kubernetes-dashboard create token dashboard-admin
+
 ...
