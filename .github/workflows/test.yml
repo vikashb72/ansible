@@ -16,7 +16,7 @@ jobs:
     #runs-on: ubuntu-latest
     runs-on: arc-runner-set
     container:
-      image: ttl.sh/b-23-cdc2-2100-4e43-b86d-7aa714de3830:4h
+      image: ttl.sh/b-24-cdc2-2100-4e43-b86d-7aa714de3830:4h
     steps:
     
       - uses: actions/checkout@v4
