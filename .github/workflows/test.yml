@@ -20,14 +20,15 @@ jobs:
       - name: Create tarball
         run: |
           mkdir -p ../dist
-          git archive --format=tar.gz -o ../dist/repo.tgz \
+          git archive --format=tar.gz -o repo.tgz \
              --prefix=${{ github.ref_name }} ${{ github.ref_name }}
+          ls -l
 
       - name: Upload tarball
         uses: actions/upload-artifact@v4
         with:
           name: "{{ github.ref_name }}_tarball"
-          path: ../dist/repo.tgz
+          path: repo.tgz
 
   build:
     runs-on: arc-runner-set
