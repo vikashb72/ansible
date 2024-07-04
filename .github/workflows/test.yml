@@ -24,9 +24,10 @@ jobs:
       - uses: int128/kaniko-action@v1
         with:
           push: false
+          file: Dockerfile
           tags: ttl.sh/85aaf77f-0573-4693-8f27-a58b2f06c7e8:5m
-          build-args:
-            - STAGE=PRODUCTION
+          build-args: |
+            STAGE=PRODUCTION
 
       #- name: debug
       #  run: |
