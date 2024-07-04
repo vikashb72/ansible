@@ -16,12 +16,16 @@ jobs:
     #runs-on: ubuntu-latest
     runs-on: arc-runner-set
     container:
-      image: gcr.io/kaniko-project/executor:v1.20.0-debug
+      #image: gcr.io/kaniko-project/executor:v1.20.0-debug
       #image: ttl.sh/k-25-cdc2-2100-4e43-b86d-7aa714de3830:4h
     steps:
     
       - uses: actions/checkout@v4
-      
+
+      - name: debug:
+        run: |
+          pwd
+          ls -l
 
       #- name: debug
       #  run: |
