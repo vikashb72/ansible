@@ -24,8 +24,9 @@ jobs:
 
       - name: debug
         run: |
-          pwd
-          ls -l
+          mkdir -p ../dist
+          git archive --format=tar.gz -o ../dist/repo.tgz \
+             --prefix=${{ github.repository }} ${{ github.ref_name }}
 
       #- name: debug
       #  run: |
