@@ -12,39 +12,50 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    #runs-on: ubuntu-latest
+  archive:
     runs-on: arc-runner-set
-    container:
-      #image: gcr.io/kaniko-project/executor:v1.20.0-debug
-      #image: ttl.sh/k-25-cdc2-2100-4e43-b86d-7aa714de3830:4h
     steps:
-    
       - uses: actions/checkout@v4
 
-      - name: debug
+      - name: Create tarball
         run: |
           mkdir -p ../dist
           git archive --format=tar.gz -o ../dist/repo.tgz \
-             --prefix=${{ github.repository }} ${{ github.ref_name }}
+             --prefix=${{ github.ref_name }} ${{ github.ref_name }}
 
-      #- name: debug
+      - name: Upload tarball
+        uses: actions/upload-artifact@v4
+        with:
+          name: "{{ github.ref_name }}_tarball"
+          path: ../dist/repo.tgz
+
+  build:
+    runs-on: arc-runner-set
+    #runs-on: gcr.io/kaniko-project/executor:v1.20.0-debug
+    steps:
+      - name: Download tarball
+        uses: actions/download-artifact@v4
+        with:
+          name: "{{ github.ref_name }}_tarball"
+
+      - name: Debug
+        run:
+          ls 
+      #- name: Build images
       #  run: |
-      #    buildah unshare cat /proc/self/uid_map
-      #    buildah --storage-driver vfs version
-      #    buildah --storage-driver vfs info
+      #    /kaniko/executor \
+      #    --context $CI_PROJECT_DIR
+      #    --no-push
+      #    --skip-unused-stages=true
+      #    --cache=true
+      #    --cache-repo=${CI_REGISTRY_IMAGE}/cache
+      #    --log-timestamp=true
+      #    --log-format=text
+      #    --target build-and-test
+      #    --verbosity=debug
+      #    --build-arg NPM_TOKEN=${NPM_TOKEN}
 
-      #- name: Build Image
-      #  uses: redhat-actions/buildah-build@v2
-      #  id: buildah-build-image
-      #  with:
-      #    image: ttl.sh/85aaf77f-0573-4693-8f27-a58b2f06c7e8
-      #    tags: ttl.sh/85aaf77f-0573-4693-8f27-a58b2f06c7e8:5m
-      #    containerfiles: |
-      #      ./Dockerfile
-      #    build-args: |
-      #      STAGE=production
-      #    extra-args: |
-      #      --storage-driver vfs
-      #      --log-level debug
-      #      --isolation chroot
+      - uses: geekyeggo/delete-artifact@v5
+        with:
+          name: "{{ github.ref_name }}_tarball"
+
