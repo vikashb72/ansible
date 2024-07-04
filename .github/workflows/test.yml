@@ -27,35 +27,30 @@ jobs:
       - name: Upload tarball
         uses: actions/upload-artifact@v4
         with:
-          name: "{{ github.ref_name }}_tarball"
+          name: "${{ github.ref_name }}_tarball"
           path: repo.tgz
 
   build:
     needs: archive
-    runs-on: arc-runner-set
-    #runs-on: gcr.io/kaniko-project/executor:v1.20.0-debug
+    #runs-on: arc-runner-set
+    runs-on: gcr.io/kaniko-project/executor:debug
     steps:
       - name: Download tarball
         uses: actions/download-artifact@v4
         with:
-          name: "{{ github.ref_name }}_tarball"
+          name: "${{ github.ref_name }}_tarball"
 
-      - name: Debug
-        run:
-          ls 
-      #- name: Build images
-      #  run: |
-      #    /kaniko/executor \
-      #    --context $CI_PROJECT_DIR
-      #    --no-push
-      #    --skip-unused-stages=true
-      #    --cache=true
-      #    --cache-repo=${CI_REGISTRY_IMAGE}/cache
-      #    --log-timestamp=true
-      #    --log-format=text
-      #    --target build-and-test
-      #    --verbosity=debug
-      #    --build-arg NPM_TOKEN=${NPM_TOKEN}
+      - name: Build images
+        run: |
+          /kaniko/executor \
+          --verbosity debug \
+          --dockerfile Dockerfile \
+          --context repo.tgz \
+          --no-push \
+          --build-arg STAGE=production
+          --destination ttl.sh/4320e7b9-fd05-4bb0-b723-b12f3adedd7d:5m
+          #--cache=true
+          #--cache-repo=${CI_REGISTRY_IMAGE}/cache
 
       - uses: geekyeggo/delete-artifact@v5
         with:
