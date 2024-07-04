@@ -16,28 +16,35 @@ jobs:
     #runs-on: ubuntu-latest
     runs-on: arc-runner-set
     container:
-      image: ttl.sh/b-24-cdc2-2100-4e43-b86d-7aa714de3830:4h
+      image: ttl.sh/k-25-cdc2-2100-4e43-b86d-7aa714de3830:4h
     steps:
     
       - uses: actions/checkout@v4
-
-      - name: debug
-        run: |
-          buildah unshare cat /proc/self/uid_map
-          buildah --storage-driver vfs version
-          buildah --storage-driver vfs info
-
-      - name: Build Image
-        uses: redhat-actions/buildah-build@v2
-        id: buildah-build-image
+      
+      - uses: int128/kaniko-action@v1
         with:
-          image: ttl.sh/85aaf77f-0573-4693-8f27-a58b2f06c7e8
+          push: false
           tags: ttl.sh/85aaf77f-0573-4693-8f27-a58b2f06c7e8:5m
-          containerfiles: |
-            ./Dockerfile
-          build-args: |
-            STAGE=production
-          extra-args: |
-            --storage-driver vfs
-            --log-level debug
-            --isolation chroot
+          build-args:
+            - STAGE=PRODUCTION
+
+      #- name: debug
+      #  run: |
+      #    buildah unshare cat /proc/self/uid_map
+      #    buildah --storage-driver vfs version
+      #    buildah --storage-driver vfs info
+
+      #- name: Build Image
+      #  uses: redhat-actions/buildah-build@v2
+      #  id: buildah-build-image
+      #  with:
+      #    image: ttl.sh/85aaf77f-0573-4693-8f27-a58b2f06c7e8
+      #    tags: ttl.sh/85aaf77f-0573-4693-8f27-a58b2f06c7e8:5m
+      #    containerfiles: |
+      #      ./Dockerfile
+      #    build-args: |
+      #      STAGE=production
+      #    extra-args: |
+      #      --storage-driver vfs
+      #      --log-level debug
+      #      --isolation chroot
