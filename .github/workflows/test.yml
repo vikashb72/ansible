@@ -12,8 +12,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  archive:
-    runs-on: arc-runner-set
+  test:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -34,25 +34,11 @@ jobs:
     needs: archive
     #runs-on: arc-runner-set
     runs-on: ubuntu-latest
-    container: 
-      image: gcr.io/kaniko-project/executor:debug
     steps:
       - name: Download tarball
         uses: actions/download-artifact@v4
         with:
           name: "${{ github.ref_name }}_tarball"
-
-      - name: Build images
-        run: |
-          /kaniko/executor \
-          --verbosity debug \
-          --dockerfile Dockerfile \
-          --context repo.tgz \
-          --no-push \
-          --build-arg STAGE=production
-          --destination ttl.sh/4320e7b9-fd05-4bb0-b723-b12f3adedd7d:5m
-          #--cache=true
-          #--cache-repo=${CI_REGISTRY_IMAGE}/cache
 
       - uses: geekyeggo/delete-artifact@v5
         with:
