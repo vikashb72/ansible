@@ -31,7 +31,7 @@ jobs:
           path: repo.tgz
 
   build:
-    need: archive
+    needs: archive
     runs-on: arc-runner-set
     #runs-on: gcr.io/kaniko-project/executor:v1.20.0-debug
     steps:
