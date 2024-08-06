@@ -55,6 +55,15 @@
 # gloo
 # git clone https://github.com/luksa/kubectl-plugins $HOME/kubectl-plugins
 # export PATH=$PATH:$HOME/kubectl-plugins
+# https://github.com/derailed/k9s/releases/download/v0.32.5/k9s_linux_amd64.deb
+# helm repo add jetstack https://charts.jetstack.io --force-update
+# helm install \
+#  cert-manager jetstack/cert-manager \
+#  --namespace cert-manager \
+#  --create-namespace \
+#  --version v1.15.1 \
+#  --set crds.enabled=true
+# https://github.com/derailed/k9s/releases/download/v0.32.5/k9s_linux_amd64.deb
 
 
 ...

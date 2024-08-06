@@ -1,0 +1,43 @@
+---
+
+# helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+# helm install prometheus-monitoring prometheus-community/prometheus -f prometheus-values.yml --namespace monitoring
+
+#prometheus-values.yml
+#
+#alertmanager:
+#  enabled: false
+#prometheus-pushgateway:
+#  enabled: false
+#server:
+#  service:
+#    externalIPs:
+#    - <k8s-master IP address>
+#    servicePort: 9090
+#    type: NodePort
+#    nodePort: 31190
+#  persistentVolume:
+#    enabled: true
+
+# helm repo add grafana https://grafana.github.io/helm-charts
+# helm install grafana-monitoring grafana/grafana -f grafana-values.yml -n monitoring
+#persistence:
+#  enabled: true
+#initChownData:
+#  enabled: false
+#service:
+#  type: NodePort
+#  nodePort: 31000
+#  externalIPs: 
+#    - <k8s-master IP address>
+#serviceMontioring:
+#  enabled: true
+#datasources:
+#  datasources.yaml:
+#    apiVersion: 1
+#    datasources:
+#    - name: Prometheus
+#      type: prometheus
+#      url: http://prometheus-monitoring-server.monitoring.svc.cluster.local:9090
+#
+...

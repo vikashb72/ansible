@@ -1,0 +1,9 @@
+---
+#
+# helm repo add fairwinds-stable https://charts.fairwinds.com/stable
+# kubectl create namespace goldilocks
+# helm install goldilocks --namespace goldilocks fairwinds-stable/goldilocks
+#
+# helm repo add fairwinds-stable https://charts.fairwinds.com/stable
+# helm install vpa fairwinds-stable/vpa --namespace vpa --create-namespace
+#
