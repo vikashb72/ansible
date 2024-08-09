@@ -1,0 +1,15 @@
+---
+
+#
+# helm upgrade --create-namespace --namespace spegel --install --version v0.0.23 spegel oci://ghcr.io/spegel-org/helm-charts/spegel
+
+# containerd config /etc/containerd/config.toml
+#
+# or
+#cat > /etc/containerd/config.d/spegel.toml << EOL
+#[plugins."io.containerd.grpc.v1.cri".registry]
+#   config_path = "/etc/containerd/certs.d"
+#[plugins."io.containerd.grpc.v1.cri".containerd]
+#   discard_unpacked_layers = false
+#EOL
+
