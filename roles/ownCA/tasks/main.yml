@@ -1,0 +1,51 @@
+---
+
+# Install required python ssl libs (FreeBSD)
+- name: Install packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - security/p5-Net-SSLeay
+    - security/py-openssl
+    - security/py-cryptography
+
+- name: Set the ca dir
+  ansible.builtin.set_fact:
+    ca_dir: "{{ playbook_dir }}/roles/ownca/files/"
+
+# Set the owner of the file to the user running the play
+# otherwise its owned by root and not readable
+- name: Create private key
+  community.crypto.openssl_privatekey:
+    path: "{{ ca_dir }}/rootCA.key"
+    owner: "{{ lookup('env', 'USER') }}"
+  delegate_to: localhost
+  run_once: true
+
+- name: Create certificate signing request (CSR) for CA certificate
+  community.crypto.openssl_csr_pipe:
+    privatekey_path: "{{ ca_dir }}/rootCA.key"
+    common_name: Where-Ever CA
+    use_common_name_for_san: false
+    basic_constraints:
+      - 'CA:TRUE'
+    basic_constraints_critical: true
+    key_usage:
+      - keyCertSign
+    key_usage_critical: true
+  register: ca_csr
+  delegate_to: localhost
+  run_once: true
+
+- name: Create self-signed CA certificate from CSR
+  community.crypto.x509_certificate:
+    path: "{{ ca_dir }}/rootCA.pem"
+    csr_content: "{{ ca_csr.csr }}"
+    privatekey_path: "{{ ca_dir }}/rootCA.key"
+    provider: selfsigned
+    owner: "{{ lookup('env', 'USER') }}"
+  delegate_to: localhost
+  run_once: true
+
+
