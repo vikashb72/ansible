@@ -5,11 +5,14 @@
     name: argo
     repo_url: https://argoproj.github.io/argo-helm
 
-- name: Deploy nfs-subdir-external-provisioner
+- name: Deploy argo
   kubernetes.core.helm:
     name: argo
     release_namespace: argo
     chart_ref: argo/argo-cd
     create_namespace: true
 
+# HA
+# kubectl create namespace argocd
+# kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/v2.12.0/manifests/ha/install.yaml
 ...
