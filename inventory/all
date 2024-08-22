@@ -9,6 +9,7 @@ u22-docker
 
 [mgmt]
 overseer
+u22-vault
 
 [gfs]
 u22-gfs-[1:3]
