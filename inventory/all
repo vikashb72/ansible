@@ -6,6 +6,9 @@ docker
 
 [docker]
 u22-docker
+u22-dev
+u22-uat
+u22-prod
 
 [mgmt]
 overseer

@@ -23,6 +23,39 @@
     repo: "ppa:rmescandon/yq"
     state: present
 
+- name: Download k8s key
+  ansible.builtin.get_url:
+    url: https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key
+    dest: /etc/apt/keyrings/kubernetes-apt-keyring.asc
+    mode: "0644"
+
+- name: Add Kubernetes apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /"
+    state: present
+
+- name: Download helm key
+  ansible.builtin.get_url:
+    url: https://baltocdn.com/helm/signing.asc
+    dest: /etc/apt/keyrings/helm-apt-keyring.asc
+    mode: "0644"
+
+- name: Add helm apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/helm-apt-keyring.asc] https://baltocdn.com/helm/stable/debian/ all main"
+    state: present
+
+- name: Download hashicorp key
+  ansible.builtin.get_url:
+    url: https://apt.releases.hashicorp.com/gpg
+    dest: /etc/apt/keyrings/hashicorp-keyring.asc
+    mode: "0644"
+
+- name: Add hashicorp apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-keyring.asc] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    state: present
+
 - name: Run the equivalent of "apt-get update"
   ansible.builtin.apt:
     update_cache: true
@@ -41,6 +74,12 @@
     - yamllint
     - yq
     - jq
+    - kubectl
+    - apparmor-utils
+    - python3-kubernetes
+    - python3-jmespath
+    - nfs-client
+    - helm
 
 - name: Download docker key
   ansible.builtin.get_url:
@@ -79,5 +118,57 @@
     restart: true
     ports:
       - "5000:5000"
+
+- name: Create /var/opt/minikube/add-tools.sh
+  ansible.builtin.file:
+    path: /var/opt/minikube
+    mode: "0775"
+    owner: root
+    group: root
+    state: directory
+
+- name: Create add tools script
+  ansible.builtin.copy:
+    dest: /var/opt/minikube/add-tools.sh
+    content: |
+      #!/bin/bash
+      mkdir -p /usr/local/bin
+      cd /usr/local/bin
+      # kubctl-convert
+      curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl-convert"
+      chmod 0755 /usr/local/bin/kubectl-convert
+      # kustomize
+      curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+      # glooctl
+      curl -sL https://run.solo.io/gloo/install | sh
+      mv /root/.gloo/bin/glooctl  .
+      #
+      curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+      sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+      rm argocd-linux-amd64
+      rm -fr /root/.gloo
+      /usr/local/bin/glooctl install gateway
+      touch /var/opt/minikube/add-tools.done
+    owner: root
+    mode: "0700"
+
+- name: Check if /var/opt/minikube/add-tools.done exists
+  ansible.builtin.stat:
+    path: /var/opt/minikube/add-tools.done
+  register: tools_added
+
+- name: Execute /var/opt/minikube/add-tools.sh
+  ansible.builtin.command: /var/opt/minikube/add-tools.sh
+  args:
+    creates: /var/opt/minikube/add-tools.done
+  changed_when: false
+  when: not tools_added.stat.exists
+
+- name: Install helm
+  ansible.builtin.copy:
+    src: minikube
+    dest: /usr/local/bin/minikube
+    owner: root
+    mode: "0755"
 
 ...
