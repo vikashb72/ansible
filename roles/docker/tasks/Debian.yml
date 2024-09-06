@@ -171,4 +171,17 @@
     owner: root
     mode: "0755"
 
+- name: Update bashrc for my settings
+  ansible.builtin.blockinfile:
+    path: "{{ files }}"
+    marker: "# {mark} MINIKUBE ANSIBLE MANAGED BLOCK -"
+    block: |
+      source <(kubectl completion bash)
+      export XAUTHORITY=$HOME/.Xauthority
+  loop:
+    - /root/.bashrc
+    - /home/vikashb/.bashrc
+  loop_control:
+    loop_var: files
+
 ...
