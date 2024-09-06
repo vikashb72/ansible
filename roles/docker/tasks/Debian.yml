@@ -166,10 +166,14 @@
 
 - name: Install helm
   ansible.builtin.copy:
-    src: minikube
-    dest: /usr/local/bin/minikube
+    src: "{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
     owner: root
     mode: "0755"
+  loop:
+    - minikube
+    - minikube-init-env.sh
+
 
 - name: Update bashrc for my settings
   ansible.builtin.blockinfile:
