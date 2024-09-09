@@ -1,0 +1,89 @@
+---
+
+- name: Set controller based facts
+  ansible.builtin.set_fact:
+    k3s_is_controller: true
+    k3s_in_cluster: "{{ item.0.name }}"
+    k3s_bootstrap_host: "{{ item.0.bootstrap }}"
+    k3s_tls_san: "{{ item.0.tls_san }}"
+  loop: "{{ k3s_clusters  | subelements('controllers') }}"
+  when: "item.1 == inventory_hostname"
+
+- name: Set node based facts
+  ansible.builtin.set_fact:
+    k3s_is_node: true
+    k3s_in_cluster: "{{ item.0.name }}"
+    k3s_bootstrap_host: "{{ item.0.bootstrap }}"
+    k3s_tls_san: "{{ item.0.tls_san }}"
+  loop: "{{ k3s_clusters  | subelements('nodes') }}"
+  when:
+    - "item.1 == inventory_hostname"
+    - k3s_is_controller is sameas false
+
+- name: Create control directory
+  ansible.builtin.file:
+    path: /var/opt/k3s
+    state: directory
+    mode: "0755"
+    owner: root
+
+- name: Create k3s installer script
+  ansible.builtin.copy:
+    dest: /var/opt/k3s/k3s-installer.sh
+    content: |
+      #!/bin/bash
+      mkdir -p /usr/local/bin
+      cd /usr/local/bin
+      curl -sfL https://get.k3s.io | \
+        K3S_TOKEN={{ k3s_tokens[k3s_in_cluster] }} sh -s - server \
+        --cluster-init \
+        --disable local-storage \
+        --tls-san={{ k3s_tls_san | join(' --tls-san=') }}
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Create the controller join script
+  ansible.builtin.copy:
+    dest: /var/opt/k3s/k3s-installer.sh
+    content: |
+      #!/bin/bash
+      mkdir -p /usr/local/bin
+      cd /usr/local/bin
+      curl -sfL https://get.k3s.io | \
+        K3S_TOKEN={{ k3s_tokens[k3s_in_cluster] }} sh -s - server \
+        --server https://{{ k3s_bootstrap_host }}:6443 \
+        --disable local-storage \
+        --tls-san={{ k3s_tls_san | join(' --tls-san=') }}
+  when:
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+    - "k3s_bootstrap_host != inventory_hostname"
+
+- name: Create the node join script
+  ansible.builtin.copy:
+    dest: /var/opt/k3s/k3s-installer.sh
+    content: |
+      #!/bin/bash
+      mkdir -p /usr/local/bin
+      cd /usr/local/bin
+      curl -sfL https://get.k3s.io | \
+        K3S_TOKEN={{ k3s_tokens[k3s_in_cluster] }} sh -s - agent \
+        --server https://{{ k3s_bootstrap_host }}:6443 
+  when:
+    - k3s_is_controller is sameas false
+    - k3s_is_node is sameas true
+    - "k3s_bootstrap_host != inventory_hostname"
+
+- name: debug
+  debug:
+    msg:
+      - "controller: {{ k3s_is_controller }}"
+      - "cluster: {{ k3s_in_cluster }}"
+      - "bootstrap: {{ k3s_bootstrap_host }}"
+      - "k3s_tls_san: {{ k3s_tls_san }}"
+      - "token = {{ k3s_tokens[k3s_in_cluster] }}"
+      - "--tls-san={{ k3s_tls_san | join(' --tls-san=') }}"
+
+...

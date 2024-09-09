@@ -1,0 +1,17 @@
+---
+
+- name: Kubernetes playbook
+  hosts: all:&k3s
+  pre_tasks:
+    - name: Verify ansible version
+      ansible.builtin.assert:
+        that: "ansible_version.full is version_compare('2.15', '>=')"
+        msg: "Ansible 2.15 or later required"
+  become: true
+  become_method: ansible.builtin.sudo
+  vars_files:
+    - vault/k3s.yml
+  roles:
+    - k3s
+
+...
