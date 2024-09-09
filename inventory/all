@@ -3,6 +3,7 @@ gfs
 k8s
 mgmt
 docker
+k3s
 
 [docker]
 u22-docker
@@ -26,6 +27,18 @@ u22-k8s-cp-[1:3]
 
 [k8s_nodes]
 u22-k8s-nd-[1:3]
+
+[k3s:children]
+k3s_controllers
+k3s_nodes
+
+[k3s_controllers]
+k3s-dev-c[1:3]
+k3s-prd-c[1:3]
+
+[k3s_nodes]
+k3s-dev-n[1:3]
+k3s-prd-n[1:3]
 
 [ubuntu_python3:vars]
 ansible_python_interpreter=/usr/bin/python3
