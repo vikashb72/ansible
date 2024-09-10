@@ -38,15 +38,22 @@ kubectl wait -n nfs-provisioning pods \
     --for condition=Ready \
     --timeout=30s
 
-exit
-git clone git@github.com:vikashb72/gitops-mono-repo.git
-helm dep update gitops-mono-repo/charts/argo-cd
-helm install -n argocd argo-cd  gitops-mono-repo/charts/argo-cd --create-namespace=true --wait
-kubectl -n argocd get secret argocd-initial-admin-secret -o     jsonpath="{.data.password}" | base64 -d; echo
+FULL_HOSTNAME=$(hostname -f)
+EVT=$(echo ${FULL_HOSTNAME/.*/} | sed 's/u22-//')
+
+git clone git@github.com:vikashb72/gitops.git
+helm dep update gitops/charts/argo-cd
+helm install -n argocd argo-cd  gitops/charts/argo-cd \
+    --create-namespace=true \
+    -f gitops/charts/argo-cd/values-${EVT}.yaml
+    --wait 
+
+kubectl -n argocd get secret argocd-initial-admin-secret \
+    -o jsonpath="{.data.password}" | base64 -d; echo
 argocd login 192.168.49.2:30080
 argocd cluster list
-echo  argocd cluster set in-cluster --name dev-cluster
-argocd cluster list
-helm template gitops-mono-repo/umbrella-chart | kubectl -n argocd apply -f -
+#echo  argocd cluster set in-cluster --name dev-cluster
+#argocd cluster list
+helm template gitops/umbrella-chart/${EVT} | kubectl -n argocd apply -f -
 argocd cluster list
 argocd app list
