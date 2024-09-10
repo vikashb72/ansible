@@ -45,7 +45,7 @@ git clone git@github.com:vikashb72/gitops.git
 helm dep update gitops/charts/argo-cd
 helm install -n argocd argo-cd  gitops/charts/argo-cd \
     --create-namespace=true \
-    -f gitops/charts/argo-cd/values-${EVT}.yaml
+    -f gitops/charts/argo-cd/values-${EVT}.yaml \
     --wait 
 
 kubectl -n argocd get secret argocd-initial-admin-secret \
