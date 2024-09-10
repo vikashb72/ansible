@@ -41,6 +41,7 @@ kubectl wait -n nfs-provisioning pods \
 FULL_HOSTNAME=$(hostname -f)
 EVT=$(echo ${FULL_HOSTNAME/.*/} | sed 's/u22-//')
 
+rm -rf gitops
 git clone git@github.com:vikashb72/gitops.git
 helm dep update gitops/charts/argo-cd
 helm install -n argocd argo-cd  gitops/charts/argo-cd \
@@ -50,6 +51,8 @@ helm install -n argocd argo-cd  gitops/charts/argo-cd \
 
 kubectl -n argocd get secret argocd-initial-admin-secret \
     -o jsonpath="{.data.password}" | base64 -d; echo
+kubectl -n argocd get secret argocd-initial-admin-secret \
+    -o jsonpath="{.data.password}" | base64 -d > argocd.adm.pw
 argocd login 192.168.49.2:30080
 argocd cluster list
 #echo  argocd cluster set in-cluster --name dev-cluster
