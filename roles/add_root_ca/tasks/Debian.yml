@@ -1,0 +1,13 @@
+---
+
+- name: Install Where-Ever Root CA crt
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "/usr/local/share/ca-certificates/{{ item }}"
+    owner: root
+    mode: "0755"
+  notify: Update ca-certificates
+  loop:
+    - Where_Ever_Root_CA_Root_CA_212425365443306115571426638685908456843.crt
+
+...

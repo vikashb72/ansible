@@ -1,0 +1,9 @@
+---
+
+- name: Update ca-certificates
+  ansible.builtin.command: /usr/sbin/update-ca-certificates
+  register: update_res
+  changed_when: update_res.rc != 0
+  failed_when: update_res.rc != 0
+
+...
