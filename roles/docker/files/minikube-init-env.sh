@@ -53,10 +53,14 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
     -o jsonpath="{.data.password}" | base64 -d; echo
 kubectl -n argocd get secret argocd-initial-admin-secret \
     -o jsonpath="{.data.password}" | base64 -d > argocd.adm.pw
-argocd login 192.168.49.2:30080
+argocd login 192.168.49.2:30080 --insecure
 argocd cluster list
 #echo  argocd cluster set in-cluster --name dev-cluster
 #argocd cluster list
 helm template gitops/umbrella-chart/${EVT} | kubectl -n argocd apply -f -
 argocd cluster list
 argocd app list
+kubectl create namespace vault-system
+kubectl -n vault-system create secret generic external-vault-unseal \
+    --from-literal=addr=${VAULT_UNSEAL_TOKEN} \
+    --from-literal=token=${VAULT_UNSEAL_ADDR} 
