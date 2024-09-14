@@ -1,0 +1,10 @@
+---
+- name: Include Roles
+  ansible.builtin.include_role:
+    name: "{{ item }}"
+  loop:
+    - docker
+
+- name: Process OS Family Config
+  ansible.builtin.include_tasks: "{{ ansible_os_family }}.yml"
+
