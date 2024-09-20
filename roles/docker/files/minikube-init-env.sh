@@ -1,9 +1,48 @@
 #!/usr/bin/env bash
 
-export NFS_SERVER="192.168.0.21"
-export NFS_PATH="/data/nfs"
-export EXTERNAL_VAULT="http://192.168.0.22:8200"
+#
+# Functions
+#
+Usage() {
+   cat <<EOT
+Usage:
+    -e Environment (dev|uat|prod|minikube|k3s|k8s)
+    -n NFS Server
+    -N NFS Path
+    -v Vault Url
+    -h Help
+EOT
+   exit 2
+}
 
+#
+# Defaults
+#
+NFS_SERVER="192.168.0.5"
+NFS_PATH="/data/nfs"
+VAULT_URL="https://192.168.0.22:8200"
+EVT=""
+
+while getopts e:n:N:v:h opt
+do
+    case $opt in
+        e) EVT="${OPTARG}";;
+        n) NFS_SERVER="${OPTARG}";;
+        N) NFS_PATH="${OPTARG}";;
+        v) VAULT_URL="${OPTARG}";;
+        h) Usage;;
+        *) Usage;;
+    esac
+done
+
+[ -z $EVT ] && Usage
+
+export NFS_SERVER
+export NFS_PATH
+export EXTERNAL_VAULT
+export EVT
+
+# Add Helm repos
 helm repo add argo-cd https://argoproj.github.io/argo-helm
 helm repo add external-secrets https://charts.external-secrets.io
 helm repo add hashicorp https://helm.releases.hashicorp.com
@@ -11,6 +50,7 @@ helm repo add jetstack https://charts.jetstack.io
 helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
 helm repo add vault-raft-snapshot-agent https://argelbargel.github.io/vault-raft-snapshot-agent-helm/
 
+# set up env
 minikube stop
 minikube delete
 minikube start \
@@ -38,9 +78,6 @@ kubectl wait -n nfs-provisioning pods \
     --for condition=Ready \
     --timeout=30s
 
-FULL_HOSTNAME=$(hostname -f)
-EVT=$(echo ${FULL_HOSTNAME/.*/} | sed 's/u22-//')
-
 kubectl create namespace external-secrets
 kubectl -n external-secrets create secret generic external-hashicorp-vault-token \
    --from-literal=addr=${EXTERNAL_VAULT_ADDR} \
@@ -57,17 +94,9 @@ helm install -n argocd argo-cd  gitops/charts/argo-cd \
 
 kubectl -n argocd get secret argocd-initial-admin-secret \
     -o jsonpath="{.data.password}" | base64 -d > argocd.adm.pw
-echo '';cat argocd.adm.pw; echo ''
+echo "\n$(cat argocd.adm.pw)\n"
 argocd login 192.168.49.2:30080 --insecure
 argocd cluster list
-#echo  argocd cluster set in-cluster --name dev-cluster
-#argocd cluster list
 helm template gitops/umbrella-chart/${EVT} | kubectl -n argocd apply -f -
 argocd cluster list
 argocd app list
-
-#kubectl create namespace vault-system
-#kubectl -n vault-system create secret generic external-vault-unseal \
-#    --from-literal=addr=${EXTERNAL_VAULT_UNSEAL_TOKEN} \
-#    --from-literal=token=${EXTERNAL_VAULT_ADDR} 
-
