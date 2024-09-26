@@ -1,0 +1,16 @@
+---
+
+- name: Digital Ocean Droplet playbook
+  hosts: localhost
+  pre_tasks:
+    - name: Verify ansible version
+      ansible.builtin.assert:
+        that: "ansible_version.full is version_compare('2.15', '>=')"
+        msg: "Ansible 2.15 or later required"
+  become: true
+  become_method: ansible.builtin.sudo
+  vars_files:
+    - vault/digital_ocean.yml
+  roles:
+    - digital_ocean
+...

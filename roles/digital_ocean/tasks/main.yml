@@ -1,0 +1,20 @@
+---
+
+- name: create a new droplet
+  digital_ocean_droplet:
+    state: present
+    name: test
+    oauth_token: "{{ DO_API_KEY }}"
+    image: ubuntu-22-04-x64
+    size: s-1vcpu-1gb
+    region: lon1
+    wait_timeout: 500
+  register: my_droplet
+
+- debug:
+    msg:
+      - "data: {{  my_droplet }}"
+      - "ID: {{ my_droplet.data.droplet.id }} "
+      - "IP: {{ my_droplet.data.droplet.networks.v4 }} "
+
+...
