@@ -12,6 +12,8 @@ Usage:
     -n NFS Server
     -N NFS Path
     -v Vault Url
+    -c cpus (default 2)
+    -m memory (default 2200MB)
     -h Help
 EOT
    exit 2
@@ -23,12 +25,16 @@ EOT
 NFS_SERVER="192.168.0.5"
 NFS_PATH="/data/nfs"
 VAULT_URL="https://192.168.0.22:8200"
+CPU=2
+MEM="2200MB"
 EVT=""
 
-while getopts e:n:N:v:h opt
+while getopts c:e:m:n:N:v:h opt
 do
     case $opt in
+        c) CPU="${OPTARG}";;
         e) EVT="${OPTARG}";;
+        m) MEM="${OPTARG}";;
         n) NFS_SERVER="${OPTARG}";;
         N) NFS_PATH="${OPTARG}";;
         v) VAULT_URL="${OPTARG}";;
@@ -56,6 +62,8 @@ helm repo add vault-raft-snapshot-agent https://argelbargel.github.io/vault-raft
 minikube stop
 minikube delete
 minikube start \
+    --memory="${MEM}" \
+    --cpus="${CPU}" \
     --cni=flannel \
     --driver=docker \
     --container-runtime=containerd \
