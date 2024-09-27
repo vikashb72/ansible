@@ -16,8 +16,10 @@
   ansible.builtin.set_fact:
     k3s_is_controller: true
     k3s_in_cluster: "{{ item.0.name }}"
-    k3s_bootstrap_host: "{{ item.0.bootstrap }}"
-    k3s_tls_san: "{{ item.0.tls_san }}"
+    k3s_bootstrap_host: "{{ item.0.bootstrap.node }}"
+    k3s_bootstrap_ip: "{{ item.0.bootstrap.ip }}"
+    k3s_tls_san: "{{ item.0.tls_san.node }}"
+    k3s_tls_san_ip: "{{ item.0.tls_san.ip }}"
     k3s_ips: "{{ item.0.ips }}"
     k3s_networks: "{{ item.0.networks }}"
   loop: "{{ k3s_clusters | subelements('controllers') }}"
@@ -27,8 +29,10 @@
   ansible.builtin.set_fact:
     k3s_is_node: true
     k3s_in_cluster: "{{ item.0.name }}"
-    k3s_bootstrap_host: "{{ item.0.bootstrap }}"
-    k3s_tls_san: "{{ item.0.tls_san }}"
+    k3s_bootstrap_host: "{{ item.0.bootstrap.node }}"
+    k3s_bootstrap_ip: "{{ item.0.bootstrap.ip }}"
+    k3s_tls_san: "{{ item.0.tls_san.node }}"
+    k3s_tls_san_ip: "{{ item.0.tls_san.ip }}"
     k3s_ips: "{{ item.0.ips }}"
     k3s_networks: "{{ item.0.networks }}"
   loop: "{{ k3s_clusters | subelements('nodes') }}"
@@ -36,8 +40,42 @@
     - "item.1 == inventory_hostname"
     - k3s_is_controller is sameas false
 
+- name: Install haproxy and keepalived
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - haproxy
+    - keepalived
+
+- name: Install haproxy config
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - k3s_is_controller is sameas true
+
+- name: Install keepalive config
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - k3s_is_controller is sameas true
+
+- name: End
+  ansible.builtin.meta: end_host
+
 - name: Include Firewall rules
   ansible.builtin.include_tasks: "{{ k3s_firewalls[ansible_os_family] }}.yaml"
+
+- name: Install haproxy
+  ansible.builtin.include_tasks: "haproxy.yaml"
 
 - name: Create control directory
   ansible.builtin.file:
@@ -45,6 +83,16 @@
     state: directory
     mode: "0755"
     owner: root
+
+- name: Enable mirroring of images from an upstream container registry
+  ansible.builtin.copy:
+    dest: /etc/rancher/k3s/registries.yaml
+    content: |
+      mirrors:
+        "*":
+        #docker.io:
+        #registry.k8s.io:
+    mode: "0644"
 
 - name: Create k3s installer script
   ansible.builtin.copy:
@@ -56,8 +104,10 @@
       curl -sfL https://get.k3s.io | \
         K3S_TOKEN={{ k3s_tokens[k3s_in_cluster] }} sh -s - server \
         --cluster-init \
+        --embedded-registry \
         --disable local-storage \
-        --tls-san={{ k3s_tls_san | join(' --tls-san=') }}
+        --tls-san={{ k3s_tls_san }} \
+        --tls-san={{ k3s_tls_san_ip }}
     mode: "0755"
   when:
     - "k3s_bootstrap_host == inventory_hostname"
@@ -75,7 +125,8 @@
         K3S_TOKEN={{ k3s_tokens[k3s_in_cluster] }} sh -s - server \
         --server https://{{ k3s_bootstrap_host }}:6443 \
         --disable local-storage \
-        --tls-san={{ k3s_tls_san | join(' --tls-san=') }}
+        --tls-san={{ k3s_tls_san }} \
+        --tls-san={{ k3s_tls_san_ip }}
     mode: "0755"
   when:
     - k3s_is_controller is sameas true
@@ -100,24 +151,5 @@
 
 - name: End
   ansible.builtin.meta: end_host
-
-- name: Debug
-  ansible.builtin.debug:
-    msg:
-      - "controller: {{ k3s_is_controller }}"
-      - "cluster: {{ k3s_in_cluster }}"
-      - "bootstrap: {{ k3s_bootstrap_host }}"
-      - "k3s_tls_san: {{ k3s_tls_san }}"
-      - "token = {{ k3s_tokens[k3s_in_cluster] }}"
-      - "--tls-san={{ k3s_tls_san | join(' --tls-san=') }}"
-      - "ips: {{ k3s_ips }}"
-
-- name: Debug 2
-  ansible.builtin.debug:
-    msg: "src: {{ item }}"
-  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
-#  loop: "{{ k3s_ips.controllers }}"
-#    - "{{ k3s_ips.controllers }}"
-#    - "{{ k3s_ips.nodes }}"
 
 ...

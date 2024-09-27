@@ -2,6 +2,8 @@ k3s_is_controller: false
 k3s_is_node: false
 k3s_in_cluster: none
 k3s_bootstrap_host: none
-k3s_tls_san: []
+k3s_tls_san: none
+k3s_tls_san_ip: none
 k3s_ips: []
 k3s_networks: {}
+k3s_bootstrap_ip: none
