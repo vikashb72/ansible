@@ -1,0 +1,53 @@
+---
+
+# Allow Inbound
+
+- name: Allow nodes and controllers to access Kubernetes API Server
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: 6443
+    src: "{{ item }}"
+  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
+
+- name: Required only for HA with embedded etcd
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: 2379,2380
+    src: "{{ item }}"
+  loop: "{{ k3s_ips.controllers }}"
+
+- name: Allow nodes and controllers to access Flannel VXLAN
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: 8472
+    src: "{{ item }}"
+  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
+
+- name: Allow nodes and controllers to access Kubelet metrics
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: 10250
+    src: "{{ item }}"
+  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
+
+- name: Allow nodes and controllers to access Flannel Wireguard
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: "51820,51821"
+    src: "{{ item }}"
+  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
+
+- name: Allow nodes and controllers to access embedded distributed registry
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: 5001
+    src: "{{ item }}"
+  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
+
+...
