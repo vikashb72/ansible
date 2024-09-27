@@ -22,5 +22,6 @@
     dest: /var/lib/rancher/k3s/server/manifests/vip.yaml
     owner: root
     group: root
+    mode: "0644"
 
 ...
