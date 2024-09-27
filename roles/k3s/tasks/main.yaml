@@ -19,6 +19,7 @@
     k3s_bootstrap_host: "{{ item.0.bootstrap }}"
     k3s_tls_san: "{{ item.0.tls_san }}"
     k3s_ips: "{{ item.0.ips }}"
+    k3s_networks: "{{ item.0.networks }}"
   loop: "{{ k3s_clusters | subelements('controllers') }}"
   when: "item.1 == inventory_hostname"
 
@@ -29,6 +30,7 @@
     k3s_bootstrap_host: "{{ item.0.bootstrap }}"
     k3s_tls_san: "{{ item.0.tls_san }}"
     k3s_ips: "{{ item.0.ips }}"
+    k3s_networks: "{{ item.0.networks }}"
   loop: "{{ k3s_clusters | subelements('nodes') }}"
   when:
     - "item.1 == inventory_hostname"

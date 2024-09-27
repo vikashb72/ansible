@@ -10,6 +10,14 @@
     src: "{{ item }}"
   loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
 
+- name: Allow pods and services networks
+  community.general.ufw:
+    rule: allow
+    src: "{{ item }}"
+  loop: 
+  - "{{ k3s_networks.pods }}"
+  - "{{ k3s_networks.services }}"
+
 - name: Required only for HA with embedded etcd
   community.general.ufw:
     rule: allow

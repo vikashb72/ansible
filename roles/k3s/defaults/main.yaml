@@ -4,3 +4,4 @@ k3s_in_cluster: none
 k3s_bootstrap_host: none
 k3s_tls_san: []
 k3s_ips: []
+k3s_networks: {}
