@@ -1,12 +1,25 @@
 ---
 
+- name: Include Roles
+  ansible.builtin.include_role:
+    name: "{{ item }}"
+  loop:
+    - common_packages
+    - bashrc
+    - timezone
+    - sudo
+    - resolved
+    - add_root_ca
+    - firewall
+
 - name: Set controller based facts
   ansible.builtin.set_fact:
     k3s_is_controller: true
     k3s_in_cluster: "{{ item.0.name }}"
     k3s_bootstrap_host: "{{ item.0.bootstrap }}"
     k3s_tls_san: "{{ item.0.tls_san }}"
-  loop: "{{ k3s_clusters  | subelements('controllers') }}"
+    k3s_ips: "{{ item.0.ips }}"
+  loop: "{{ k3s_clusters | subelements('controllers') }}"
   when: "item.1 == inventory_hostname"
 
 - name: Set node based facts
@@ -15,10 +28,14 @@
     k3s_in_cluster: "{{ item.0.name }}"
     k3s_bootstrap_host: "{{ item.0.bootstrap }}"
     k3s_tls_san: "{{ item.0.tls_san }}"
-  loop: "{{ k3s_clusters  | subelements('nodes') }}"
+    k3s_ips: "{{ item.0.ips }}"
+  loop: "{{ k3s_clusters | subelements('nodes') }}"
   when:
     - "item.1 == inventory_hostname"
     - k3s_is_controller is sameas false
+
+- name: Include Firewall rules
+  ansible.builtin.include_tasks: "{{ k3s_firewalls[ansible_os_family] }}.yaml"
 
 - name: Create control directory
   ansible.builtin.file:
@@ -39,6 +56,7 @@
         --cluster-init \
         --disable local-storage \
         --tls-san={{ k3s_tls_san | join(' --tls-san=') }}
+    mode: "0755"
   when:
     - "k3s_bootstrap_host == inventory_hostname"
     - k3s_is_controller is sameas true
@@ -56,6 +74,7 @@
         --server https://{{ k3s_bootstrap_host }}:6443 \
         --disable local-storage \
         --tls-san={{ k3s_tls_san | join(' --tls-san=') }}
+    mode: "0755"
   when:
     - k3s_is_controller is sameas true
     - k3s_is_node is sameas false
@@ -70,14 +89,18 @@
       cd /usr/local/bin
       curl -sfL https://get.k3s.io | \
         K3S_TOKEN={{ k3s_tokens[k3s_in_cluster] }} sh -s - agent \
-        --server https://{{ k3s_bootstrap_host }}:6443 
+        --server https://{{ k3s_bootstrap_host }}:6443
+    mode: "0755"
   when:
     - k3s_is_controller is sameas false
     - k3s_is_node is sameas true
     - "k3s_bootstrap_host != inventory_hostname"
 
-- name: debug
-  debug:
+- name: End
+  ansible.builtin.meta: end_host
+
+- name: Debug
+  ansible.builtin.debug:
     msg:
       - "controller: {{ k3s_is_controller }}"
       - "cluster: {{ k3s_in_cluster }}"
@@ -85,5 +108,14 @@
       - "k3s_tls_san: {{ k3s_tls_san }}"
       - "token = {{ k3s_tokens[k3s_in_cluster] }}"
       - "--tls-san={{ k3s_tls_san | join(' --tls-san=') }}"
+      - "ips: {{ k3s_ips }}"
+
+- name: Debug 2
+  ansible.builtin.debug:
+    msg: "src: {{ item }}"
+  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
+#  loop: "{{ k3s_ips.controllers }}"
+#    - "{{ k3s_ips.controllers }}"
+#    - "{{ k3s_ips.nodes }}"
 
 ...
