@@ -1,6 +1,11 @@
 ---
 # Ubuntu ufw firewall
 
+- name: Install ufw
+  ansible.builtin.package:
+    name: ufw
+    state: present
+
 - name: Allow ssh access from home network
   community.general.ufw:
     rule: allow
