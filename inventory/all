@@ -17,6 +17,7 @@ u22-prod
 [mgmt]
 overseer
 u22-vault
+u22-vault-ca
 
 [gfs]
 u22-gfs-[1:3]
