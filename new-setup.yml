@@ -15,5 +15,6 @@
     - common_packages
     - timezone
     - resolved
+    - add_root_ca
 
 ...
