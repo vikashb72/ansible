@@ -46,17 +46,6 @@
     state: present
   loop:
     - keepalived
-    #- haproxy
-
-# - name: Install haproxy config
-#   ansible.builtin.template:
-#     src: haproxy.cfg.j2
-#     dest: /etc/haproxy/haproxy.cfg
-#     owner: root
-#     group: root
-#     mode: "0644"
-#   when:
-#     - k3s_is_controller is sameas true
 
 - name: Install keepalive config
   ansible.builtin.template:
@@ -115,13 +104,39 @@
     - k3s_is_controller is sameas true
     - k3s_is_node is sameas false
 
+- name: Check if k8s is initialised on bootstrap host
+  ansible.builtin.stat:
+    path: /var/opt/k3s/install.done
+  register: installation_done
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Install k3s on bootstrap host
+  ansible.builtin.command: /var/opt/k3s/k3s-installer.sh
+  args:
+    creates: /etc/containerd/config.toml
+  changed_when: false
+  when:
+    - not installation_done.stat.exists
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Wait for 6443/tcp on bootstrap node
+  ansible.builtin.wait_for:
+    host: "{{ k8s_bootstrap_host }}"
+    port: 6443
+    delay: 2
+
 - name: Get Token from bootstrap node
   ansible.builtin.command: cat /var/lib/rancher/k3s/server/node-token
   register: k3s_token
   delegate_to: "{{ k3s_bootstrap_host }}"
   changed_when: false
   when: "k3s_bootstrap_host != inventory_hostname"
-  
+
 - name: Create the controller join script
   ansible.builtin.copy:
     dest: /var/opt/k3s/k3s-installer.sh
@@ -159,16 +174,19 @@
     - k3s_is_node is sameas true
     - "k3s_bootstrap_host != inventory_hostname"
 
-- name: Check if k8s is initialised 
+- name: Check if k8s is initialised
   ansible.builtin.stat:
     path: /var/opt/k3s/install.done
   register: installation_done
+  when: "k3s_bootstrap_host != inventory_hostname"
 
 - name: Install k3s
   ansible.builtin.command: /var/opt/k3s/k3s-installer.sh
   args:
     creates: /etc/containerd/config.toml
   changed_when: false
-  when: not installation_done.stat.exists
+  when:
+    - "k3s_bootstrap_host != inventory_hostname"
+    - not installation_done.stat.exists
 
 ...

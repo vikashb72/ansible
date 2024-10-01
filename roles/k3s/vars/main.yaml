@@ -5,7 +5,7 @@ k3s_firewalls:
   Debian: ufw
   RedHat: firewalld
 
-k8s_nfs:
+k3s_nfs:
   server: 192.168.0.5
   path: /data/nfs/k3s
 
