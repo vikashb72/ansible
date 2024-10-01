@@ -9,8 +9,8 @@
         msg: "Ansible 2.15 or later required"
   become: true
   become_method: ansible.builtin.sudo
-  vars_files:
-    - vault/k3s.yml
+  #vars_files:
+  #  - vault/k3s.yml
   roles:
     - k3s
 
