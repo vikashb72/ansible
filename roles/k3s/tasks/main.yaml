@@ -40,12 +40,36 @@
     - "item.1 == inventory_hostname"
     - k3s_is_controller is sameas false
 
+- name: Download helm key
+  ansible.builtin.get_url:
+    url: https://baltocdn.com/helm/signing.asc
+    dest: /etc/apt/keyrings/helm-apt-keyring.asc
+    mode: "0644"
+  when: k3s_is_controller is sameas true
+
+- name: Add helm apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/helm-apt-keyring.asc] https://baltocdn.com/helm/stable/debian/ all main"
+    state: present
+  when: k3s_is_controller is sameas true
+
+- name: Run the equivalent of "apt-get update"
+  ansible.builtin.apt:
+    update_cache: true
+
 - name: Install keepalived
   ansible.builtin.package:
-    name: "{{ item }}"
+    name: keepalived
     state: present
-  loop:
-    - keepalived
+
+- name: Install helm on controllers
+  ansible.builtin.package:
+    name: helm
+    state: present
+  when: k3s_is_controller is sameas true
+
+- name: end
+  meta: end_host
 
 - name: Install keepalive config
   ansible.builtin.template:
