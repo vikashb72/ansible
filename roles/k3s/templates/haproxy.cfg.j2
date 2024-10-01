@@ -1,14 +1,17 @@
 frontend k3s-frontend
-    bind *:6443
+    bind *:16443
     mode tcp
     option tcplog
+    timeout client 10s
     default_backend k3s-backend
 
 backend k3s-backend
+    timeout connect 10s
+    timeout server 10s
     mode tcp
     option tcp-check
     balance roundrobin
     default-server inter 10s downinter 5s
 {% for server in k3s_ips.controllers %}
-    server server-{{ loop.index}} {{ server }}:6443 check
+    server server-{{ loop.index}} {{ server }}:6443 check fall 3 rise 2
 {% endfor %}

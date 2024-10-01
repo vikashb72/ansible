@@ -45,18 +45,18 @@
     name: "{{ item }}"
     state: present
   loop:
-    - haproxy
     - keepalived
+    #- haproxy
 
-- name: Install haproxy config
-  ansible.builtin.template:
-    src: haproxy.cfg.j2
-    dest: /etc/haproxy/haproxy.cfg
-    owner: root
-    group: root
-    mode: "0644"
-  when:
-    - k3s_is_controller is sameas true
+# - name: Install haproxy config
+#   ansible.builtin.template:
+#     src: haproxy.cfg.j2
+#     dest: /etc/haproxy/haproxy.cfg
+#     owner: root
+#     group: root
+#     mode: "0644"
+#   when:
+#     - k3s_is_controller is sameas true
 
 - name: Install keepalive config
   ansible.builtin.template:
@@ -68,18 +68,19 @@
   when:
     - k3s_is_controller is sameas true
 
-- name: End
-  ansible.builtin.meta: end_host
-
 - name: Include Firewall rules
   ansible.builtin.include_tasks: "{{ k3s_firewalls[ansible_os_family] }}.yaml"
-
-- name: Install haproxy
-  ansible.builtin.include_tasks: "haproxy.yaml"
 
 - name: Create control directory
   ansible.builtin.file:
     path: /var/opt/k3s
+    state: directory
+    mode: "0755"
+    owner: root
+
+- name: Create /etc/rancher/k3s
+  ansible.builtin.file:
+    path: /etc/rancher/k3s
     state: directory
     mode: "0755"
     owner: root
@@ -102,10 +103,9 @@
       mkdir -p /usr/local/bin
       cd /usr/local/bin
       curl -sfL https://get.k3s.io | \
-        K3S_TOKEN={{ k3s_tokens[k3s_in_cluster] }} sh -s - server \
+        sh -s - server \
         --cluster-init \
         --embedded-registry \
-        --disable local-storage \
         --tls-san={{ k3s_tls_san }} \
         --tls-san={{ k3s_tls_san_ip }}
       touch /var/opt/k3s/install.done
@@ -115,6 +115,16 @@
     - k3s_is_controller is sameas true
     - k3s_is_node is sameas false
 
+- name: Get Token from bootstrap node
+  ansible.builtin.command: cat /var/lib/rancher/k3s/server/node-token
+  register: k3s_token
+  delegate_to: "{{ k3s_bootstrap_host }}"
+  changed_when: false
+  when:
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+    - "k3s_bootstrap_host != inventory_hostname"
+  
 - name: Create the controller join script
   ansible.builtin.copy:
     dest: /var/opt/k3s/k3s-installer.sh
@@ -123,9 +133,9 @@
       mkdir -p /usr/local/bin
       cd /usr/local/bin
       curl -sfL https://get.k3s.io | \
-        K3S_TOKEN={{ k3s_tokens[k3s_in_cluster] }} sh -s - server \
+        K3S_TOKEN={{ k3s_token.stdout }} sh -s - server \
         --server https://{{ k3s_bootstrap_host }}:6443 \
-        --disable local-storage \
+        --embedded-registry \
         --tls-san={{ k3s_tls_san }} \
         --tls-san={{ k3s_tls_san_ip }}
       touch /var/opt/k3s/install.done
@@ -143,7 +153,7 @@
       mkdir -p /usr/local/bin
       cd /usr/local/bin
       curl -sfL https://get.k3s.io | \
-        K3S_TOKEN={{ k3s_tokens[k3s_in_cluster] }} sh -s - agent \
+        K3S_TOKEN={{ k3s_token.stdout }} sh -s - agent \
         --server https://{{ k3s_bootstrap_host }}:6443
       touch /var/opt/k3s/install.done
     mode: "0755"
@@ -158,8 +168,9 @@
   register: installation_done
 
 - name: Install k3s
-  ansible.builtin.shell: /var/opt/k3s/k3s-installer.sh
-    args:                                                                             creates: /etc/containerd/config.toml
+  ansible.builtin.command: /var/opt/k3s/k3s-installer.sh
+  args:
+    creates: /etc/containerd/config.toml
   changed_when: false
   when: not installation_done.stat.exists
 
