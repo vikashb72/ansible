@@ -40,7 +40,7 @@
     - "item.1 == inventory_hostname"
     - k3s_is_controller is sameas false
 
-- name: Install haproxy and keepalived
+- name: Install keepalived
   ansible.builtin.package:
     name: "{{ item }}"
     state: present
@@ -120,10 +120,7 @@
   register: k3s_token
   delegate_to: "{{ k3s_bootstrap_host }}"
   changed_when: false
-  when:
-    - k3s_is_controller is sameas true
-    - k3s_is_node is sameas false
-    - "k3s_bootstrap_host != inventory_hostname"
+  when: "k3s_bootstrap_host != inventory_hostname"
   
 - name: Create the controller join script
   ansible.builtin.copy:
@@ -162,7 +159,7 @@
     - k3s_is_node is sameas true
     - "k3s_bootstrap_host != inventory_hostname"
 
-- name: Check if k8s is initialised on controller
+- name: Check if k8s is initialised 
   ansible.builtin.stat:
     path: /var/opt/k3s/install.done
   register: installation_done
