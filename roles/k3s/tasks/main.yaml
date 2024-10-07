@@ -68,9 +68,6 @@
     state: present
   when: k3s_is_controller is sameas true
 
-- name: end
-  meta: end_host
-
 - name: Install keepalive config
   ansible.builtin.template:
     src: keepalived.conf.j2
@@ -117,8 +114,10 @@
       cd /usr/local/bin
       curl -sfL https://get.k3s.io | \
         sh -s - server \
+        --write-kubeconfig-mode=644 \
         --cluster-init \
         --embedded-registry \
+        --disable=servicelb \
         --tls-san={{ k3s_tls_san }} \
         --tls-san={{ k3s_tls_san_ip }}
       touch /var/opt/k3s/install.done
@@ -171,7 +170,9 @@
       curl -sfL https://get.k3s.io | \
         K3S_TOKEN={{ k3s_token.stdout }} sh -s - server \
         --server https://{{ k3s_bootstrap_host }}:6443 \
+        --write-kubeconfig-mode=644 \
         --embedded-registry \
+        --disable=servicelb \
         --tls-san={{ k3s_tls_san }} \
         --tls-san={{ k3s_tls_san_ip }}
       touch /var/opt/k3s/install.done
