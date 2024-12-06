@@ -15,6 +15,7 @@ u22-uat
 u22-prod
 
 [mgmt]
+ois
 overseer
 u22-vault
 u22-vault-ca
