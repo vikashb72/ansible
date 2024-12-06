@@ -1,0 +1,43 @@
+---
+
+- name: Download hashicorp key
+  ansible.builtin.get_url:
+    url: https://apt.releases.hashicorp.com/gpg
+    dest: /etc/apt/keyrings/hashicorp-keyring.asc
+    mode: "0644"
+
+- name: Add hashicorp apt repository.
+  ansible.builtin.apt_repository:
+    repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/hashicorp-keyring.asc] https://apt.releases.hashicorp.com {{ ansible_distribution_release }} main"
+    state: present
+
+- name: Add yq apt repository.
+  ansible.builtin.apt_repository:
+    repo: "ppa:rmescandon/yq"
+    state: present
+
+- name: Update apt
+  ansible.builtin.apt:
+    upgrade: true
+    update_cache: true
+
+- name: Install packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - vault
+    - jq
+
+- name: Create directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+    owner: vault
+    group: vault
+  loop:
+    - /opt/vault/data
+    - /opt/vault/tls
+
+...

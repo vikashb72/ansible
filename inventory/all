@@ -7,6 +7,7 @@ k8s
 mgmt
 docker
 k3s
+hvault
 
 [docker]
 u22-docker
@@ -14,11 +15,13 @@ u22-dev
 u22-uat
 u22-prod
 
+[hvault]
+u22-vault
+u22-vault-ca
+
 [mgmt]
 ois
 overseer
-u22-vault
-u22-vault-ca
 
 [gfs]
 u22-gfs-[1:3]
