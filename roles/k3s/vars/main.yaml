@@ -6,8 +6,8 @@ k3s_firewalls:
   RedHat: firewalld
 
 k3s_nfs:
-  server: 192.168.0.5
-  path: /data/nfs/k3s
+  server: 192.168.0.3
+  path: /zroot/data/nfs
 
 k3s_clusters:
   - name: dev
