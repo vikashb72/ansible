@@ -195,10 +195,10 @@
         --server https://{{ k3s_bootstrap_host }}:6443 \
         --write-kubeconfig-mode=644 \
         --embedded-registry \
+        --disable=local-storage \
         --disable=servicelb \
         --tls-san={{ k3s_tls_san }} \
         --tls-san={{ k3s_tls_san_ip }}
-        #--disable=traefik \
       touch /var/opt/k3s/install.done
     mode: "0755"
   when:
