@@ -388,7 +388,6 @@
   when:
     - k3s_is_controller is sameas true
     - k3s_is_node is sameas false
-    - not argo_installed.stat.exists
 
 - name: Create install argocd binary script
   ansible.builtin.copy:
