@@ -139,10 +139,10 @@
         --write-kubeconfig-mode=644 \
         --cluster-init \
         --embedded-registry \
+        --disable=local-storage \
         --disable=servicelb \
         --tls-san={{ k3s_tls_san }} \
         --tls-san={{ k3s_tls_san_ip }}
-        #--disable=traefik \
       touch /var/opt/k3s/install.done
     mode: "0755"
   when:
@@ -250,6 +250,32 @@
       url: https://argoproj.github.io/argo-helm
     - name: nfs-subdir-external-provisioner
       url: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+    - name: csi-driver-nfs
+      url: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Deploy csi-driver-nfs
+  kubernetes.core.helm:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    name:  csi-driver-nfs
+    release_namespace: kube-system
+    chart_ref: csi-driver-nfs/csi-driver-nfs
+    create_namespace: true
+    wait: true
+    values:
+      storageClass:
+        create: true
+        name: nfs-csi
+        annotations:
+          storageclass.kubernetes.io/is-default-class: "true"
+        parameters:
+          server: "{{ k3s_nfs.server }}"
+          share: "{{ k3s_nfs.path }}"
+        reclaimPolicy: Delete
+        volumeBindingMode: Immediate
   when:
     - "k3s_bootstrap_host == inventory_hostname"
     - k3s_is_controller is sameas true
@@ -262,6 +288,7 @@
     release_namespace: metallb-system
     chart_ref: metallb/metallb
     create_namespace: true
+    wait: true
   when:
     - "k3s_bootstrap_host == inventory_hostname"
     - k3s_is_controller is sameas true
@@ -273,24 +300,24 @@
     port: 7472
     delay: 10
 
-- name: Deploy nfs-provisioning
-  kubernetes.core.helm:
-    kubeconfig: /etc/rancher/k3s/k3s.yaml
-    name:  nfs-subdir-external-provisioner
-    release_namespace: nfs-provisioning
-    chart_ref: nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
-    create_namespace: true
-    set_values:
-      - value: "nfs.server={{ k3s_nfs.server }}"
-        value_type: string
-      - value: "nfs.path={{ k3s_nfs.path }}"
-        value_type: string
-      - value: "storageClass.defaultClass=true"
-        value_type: string
-  when:
-    - "k3s_bootstrap_host == inventory_hostname"
-    - k3s_is_controller is sameas true
-    - k3s_is_node is sameas false
+#- name: Deploy nfs-provisioning
+#  kubernetes.core.helm:
+#    kubeconfig: /etc/rancher/k3s/k3s.yaml
+#    name:  nfs-subdir-external-provisioner
+#    release_namespace: nfs-provisioning
+#    chart_ref: nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
+#    create_namespace: true
+#    set_values:
+#      - value: "nfs.server={{ k3s_nfs.server }}"
+#        value_type: string
+#      - value: "nfs.path={{ k3s_nfs.path }}"
+#        value_type: string
+#      - value: "storageClass.defaultClass=true"
+#        value_type: string
+#  when:
+#    - "k3s_bootstrap_host == inventory_hostname"
+#    - k3s_is_controller is sameas true
+#    - k3s_is_node is sameas false
 
 - name: Create IPAddressPool file
   ansible.builtin.copy:
