@@ -7,8 +7,9 @@
     rule: allow
     proto: tcp
     port: 6443
-    src: "{{ item }}"
-  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
+    src: 192.168.0.0/24
+#    src: "{{ item }}"
+#  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
 
 - name: Allow pods and services networks
   community.general.ufw:
