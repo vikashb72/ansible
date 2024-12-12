@@ -364,7 +364,7 @@
     - k3s_is_controller is sameas true
     - k3s_is_node is sameas false
 
-- name: Install argocd
+- name: Install argocd via helm
   kubernetes.core.helm:
     kubeconfig: /etc/rancher/k3s/k3s.yaml
     update_repo_cache: true
@@ -376,6 +376,10 @@
     values_files:
       - /tmp/gitops/charts/argo-cd/values-{{ k3s_in_cluster }}.yaml
     wait: true
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
 
 - name: Check if argocd binary is installed on controllers
   ansible.builtin.stat:
@@ -384,6 +388,25 @@
   when:
     - k3s_is_controller is sameas true
     - k3s_is_node is sameas false
+    - not argo_installed.stat.exists
+
+- name: Create install argocd binary script
+  ansible.builtin.copy:
+    dest: /var/opt/k3s/argocd.project.sh
+    content: |
+      #!/usr/bin/env bash
+      [ -f /usr/local/bin/argocd ] && exit 0
+      VERSION=$(curl -L -s https://raw.githubusercontent.com/argoproj/argo-cd/stable/VERSION)
+      curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/download/v$VERSION/argocd-linux-amd64
+      install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+      rm argocd-linux-amd64
+      touch /var/opt/k3s/argo_installed.done
+    mode: "0755"
+  when:
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+    - not argo_installed.stat.exists
+
 - name: Install argocd binary on controllers
   ansible.builtin.command: /var/opt/k3s/argocd.project.sh
   args:
@@ -417,24 +440,7 @@
     - k3s_is_node is sameas false
     - not argo_installed.stat.exists
 
-- name: Install argocd binary
-  ansible.builtin.copy:
-    dest: /var/opt/k3s/argocd.project.sh
-    content: |
-      #!/usr/bin/env bash
-      [ -f /usr/local/bin/argocd ] && exit 0
-      VERSION=$(curl -L -s https://raw.githubusercontent.com/argoproj/argo-cd/stable/VERSION)
-      curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/download/v$VERSION/argocd-linux-amd64
-      install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
-      rm argocd-linux-amd64
-      touch /var/opt/k3s/argo_installed.done
-    mode: "0755"
-  when:
-    - k3s_is_controller is sameas true
-    - k3s_is_node is sameas false
-    - not argo_installed.stat.exists
-
-- name: Install argocd binary
+- name: Install umbrella-chart
   ansible.builtin.copy:
     dest: /var/opt/k3s/create.argocd.project.sh
     content: |
@@ -445,16 +451,6 @@
     mode: "0755"
   when:
     - "k3s_bootstrap_host == inventory_hostname"
-    - k3s_is_controller is sameas true
-    - k3s_is_node is sameas false
-    - not argo_installed.stat.exists
-
-- name: Install argocd binary on controllers
-  ansible.builtin.command: /var/opt/k3s/argocd.project.sh
-  args:
-    creates: /var/opt/k3s/argo_installed.done
-  changed_when: false
-  when:
     - k3s_is_controller is sameas true
     - k3s_is_node is sameas false
     - not argo_installed.stat.exists
@@ -470,7 +466,6 @@
     - k3s_is_node is sameas false
     - not argo_installed.stat.exists
 
-# new
 #- name: Apply metallb values to the cluster.
 #  kubernetes.core.k8s:
 #    kubeconfig: /etc/rancher/k3s/k3s.yaml
