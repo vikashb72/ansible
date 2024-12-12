@@ -74,4 +74,18 @@
     src: "{{ item }}"
   loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
 
+- name: Allow nfs udp
+  community.general.ufw:
+    rule: allow
+    proto: udp
+    port: "111,911,878,674,2049,715"
+    src: "{{ k3s_nfs.server }}"
+
+- name: Allow nfs tcp
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: "111,911,878,674,2049,715"
+    src: "{{ k3s_nfs.server }}"
+
 ...
