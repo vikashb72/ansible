@@ -296,7 +296,7 @@
 
 - name: Wait for 7472/tcp on bootstrap node
   ansible.builtin.wait_for:
-    host: "{{ ansible_default_ipv4.address }}"
+    host: "{{ k3s_bootstrap_ip }}"
     port: 7472
     delay: 10
 
