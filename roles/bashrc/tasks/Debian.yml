@@ -17,4 +17,35 @@
   loop_control:
     loop_var: files
 
+- name: Update vimrc for my settings
+  ansible.builtin.blockinfile:
+    path: "{{ rcfile }}"
+    marker: '" {mark} ANSIBLE MANAGED BLOCK -'
+    block: |
+      set nocompatible              " be iMproved, required
+      filetype off                  " required
+
+      colorscheme elflord
+      set expandtab
+      set shiftwidth=3
+      set softtabstop=3
+      set tabstop=4
+      syntax on
+
+      " Switch off all auto-indenting
+      set nocindent
+      set nosmartindent
+      set noautoindent
+      set indentexpr=
+      filetype indent off
+      filetype plugin indent off
+    mode: "0644"
+    owner: vikashb
+    create: true
+  loop:
+    - /root/.vimrc
+    - /home/vikashb/.vimrc
+  loop_control:
+    loop_var: rcfile
+
 ...
