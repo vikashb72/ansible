@@ -14,6 +14,7 @@ k3s_clusters:
     networks:
       pods: 10.42.0.0/16
       services: 10.43.0.0/16
+      lb_pool: "192.168.0.110-192.168.0.126"
     bootstrap:
       node: k3s-dev-c1
       ip: 192.168.0.31

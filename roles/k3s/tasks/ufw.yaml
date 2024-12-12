@@ -29,7 +29,7 @@
 - name: Allow nodes and controllers to access Flannel VXLAN
   community.general.ufw:
     rule: allow
-    proto: tcp
+    proto: udp
     port: 8472
     src: "{{ item }}"
   loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
@@ -45,7 +45,7 @@
 - name: Allow nodes and controllers to access Flannel Wireguard
   community.general.ufw:
     rule: allow
-    proto: tcp
+    proto: udp
     port: "51820,51821"
     src: "{{ item }}"
   loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
@@ -55,6 +55,22 @@
     rule: allow
     proto: tcp
     port: 5001
+    src: "{{ item }}"
+  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
+
+- name: Allow nodes and controllers to access metallb tcp 7946,7472
+  community.general.ufw:
+    rule: allow
+    proto: tcp
+    port: "7472,7946"
+    src: "{{ item }}"
+  loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
+
+- name: Allow nodes and controllers to access metallb udp 7946,7472
+  community.general.ufw:
+    rule: allow
+    proto: udp
+    port: "7472,7946"
     src: "{{ item }}"
   loop: "{{ k3s_ips.controllers + k3s_ips.nodes }}"
 

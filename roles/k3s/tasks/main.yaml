@@ -11,6 +11,7 @@
     - resolved
     - add_root_ca
     - firewall
+  tags: initial_run 
 
 - name: Set controller based facts
   ansible.builtin.set_fact:
@@ -46,27 +47,43 @@
     dest: /etc/apt/keyrings/helm-apt-keyring.asc
     mode: "0644"
   when: k3s_is_controller is sameas true
+  tags: initial_run 
 
 - name: Add helm apt repository.
   ansible.builtin.apt_repository:
     repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/helm-apt-keyring.asc] https://baltocdn.com/helm/stable/debian/ all main"
     state: present
   when: k3s_is_controller is sameas true
+  tags: initial_run 
 
 - name: Run the equivalent of "apt-get update"
   ansible.builtin.apt:
     update_cache: true
 
+- name: Install packages
+  ansible.builtin.package:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - python3-kubernetes
+    - python3-jmespath
+    - nfs-client
+    - apparmor-utils
+    - jq
+  tags: initial_run 
+
 - name: Install keepalived
   ansible.builtin.package:
     name: keepalived
     state: present
+  tags: initial_run 
 
 - name: Install helm on controllers
   ansible.builtin.package:
     name: helm
     state: present
   when: k3s_is_controller is sameas true
+  tags: initial_run 
 
 - name: Install keepalive config
   ansible.builtin.template:
@@ -77,9 +94,11 @@
     mode: "0644"
   when:
     - k3s_is_controller is sameas true
+  tags: initial_run 
 
 - name: Include Firewall rules
   ansible.builtin.include_tasks: "{{ k3s_firewalls[ansible_os_family] }}.yaml"
+  tags: initial_run 
 
 - name: Create control directory
   ansible.builtin.file:
@@ -87,6 +106,7 @@
     state: directory
     mode: "0755"
     owner: root
+  tags: initial_run 
 
 - name: Create /etc/rancher/k3s
   ansible.builtin.file:
@@ -94,6 +114,7 @@
     state: directory
     mode: "0755"
     owner: root
+  tags: initial_run 
 
 - name: Enable mirroring of images from an upstream container registry
   ansible.builtin.copy:
@@ -104,6 +125,7 @@
         #docker.io:
         #registry.k8s.io:
     mode: "0644"
+  tags: initial_run 
 
 - name: Create k3s installer script
   ansible.builtin.copy:
@@ -120,6 +142,7 @@
         --disable=servicelb \
         --tls-san={{ k3s_tls_san }} \
         --tls-san={{ k3s_tls_san_ip }}
+        #--disable=traefik \
       touch /var/opt/k3s/install.done
     mode: "0755"
   when:
@@ -175,6 +198,7 @@
         --disable=servicelb \
         --tls-san={{ k3s_tls_san }} \
         --tls-san={{ k3s_tls_san_ip }}
+        #--disable=traefik \
       touch /var/opt/k3s/install.done
     mode: "0755"
   when:
@@ -213,5 +237,106 @@
   when:
     - "k3s_bootstrap_host != inventory_hostname"
     - not installation_done.stat.exists
+
+- name: Add metallb repo
+  kubernetes.core.helm_repository:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    name: metallb
+    repo_url: https://metallb.github.io/metallb
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Deploy metallb
+  kubernetes.core.helm:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    name: metallb
+    release_namespace: metallb-system
+    chart_ref: metallb/metallb
+    create_namespace: true
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Wait until metallb-controller is up
+  kubernetes.core.k8s_info:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    api_version: v1
+    kind: Pod
+    namespace: metallb-system
+  register: pod_list
+  until: pod_list|json_query('resources[*].status.phase')|unique == ["Running"]
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Create IPAddressPool file
+  ansible.builtin.copy:
+    dest: /var/opt/k3s/IPAddressPool.yaml
+    content: |
+      apiVersion: metallb.io/v1beta1
+      kind: IPAddressPool
+      metadata:
+        name: default
+        namespace: metallb-system
+      spec:
+        addresses:
+          - "{{ k3s_networks.lb_pool }}"
+    mode: "0644"
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Create L2Advertisement
+  ansible.builtin.copy:
+    dest: /var/opt/k3s/L2Advertisement.yaml
+    content: |
+      apiVersion: metallb.io/v1beta1
+      kind: L2Advertisement
+      metadata:
+        name: l2-advert
+        namespace: metallb-system
+    mode: "0644"
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Apply metallb values to the cluster.
+  kubernetes.core.k8s:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    state: present
+    src: "/var/opt/k3s/{{ item }}"
+  loop:
+    - IPAddressPool.yaml
+    - L2Advertisement.yaml
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Install k3s
+  ansible.builtin.command: /var/opt/k3s/k3s-installer.sh
+  args:
+    creates: /etc/containerd/config.toml
+  changed_when: false
+  when:
+    - "k3s_bootstrap_host != inventory_hostname"
+    - not installation_done.stat.exists
+
+#- name: Create memberlist secret for metallb
+#  ansible.builtin.command: >
+#    kubectl create secret generic -n metallb-system metallb-memberlist
+#    --from-literal=secretkey="$(openssl rand -base64 128)"
+#  register: create_secret
+#  changed_when: create_secret.rc == 0
+#  when:
+#    - "k3s_bootstrap_host == inventory_hostname"
+#    - k3s_is_controller is sameas true
+#    - k3s_is_node is sameas false
 
 ...
