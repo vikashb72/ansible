@@ -10,7 +10,7 @@ k3s_nfs:
   path: /zroot/data/nfs
 
 k3s_clusters:
-  - name: dev
+  - name: k3s
     networks:
       pods: 10.42.0.0/16
       services: 10.43.0.0/16

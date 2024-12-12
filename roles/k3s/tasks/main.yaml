@@ -300,25 +300,6 @@
     port: 7472
     delay: 10
 
-#- name: Deploy nfs-provisioning
-#  kubernetes.core.helm:
-#    kubeconfig: /etc/rancher/k3s/k3s.yaml
-#    name:  nfs-subdir-external-provisioner
-#    release_namespace: nfs-provisioning
-#    chart_ref: nfs-subdir-external-provisioner/nfs-subdir-external-provisioner
-#    create_namespace: true
-#    set_values:
-#      - value: "nfs.server={{ k3s_nfs.server }}"
-#        value_type: string
-#      - value: "nfs.path={{ k3s_nfs.path }}"
-#        value_type: string
-#      - value: "storageClass.defaultClass=true"
-#        value_type: string
-#  when:
-#    - "k3s_bootstrap_host == inventory_hostname"
-#    - k3s_is_controller is sameas true
-#    - k3s_is_node is sameas false
-
 - name: Create IPAddressPool file
   ansible.builtin.copy:
     dest: /var/opt/k3s/IPAddressPool.yaml
@@ -374,9 +355,137 @@
     - "k3s_bootstrap_host != inventory_hostname"
     - not installation_done.stat.exists
 
-#- name: Create memberlist secret for metallb
-#  ansible.builtin.command: >
-#    kubectl create secret generic -n metallb-system metallb-memberlist
+- name: Clone gitops repo
+  ansible.builtin.git:
+    repo: https://github.com/vikashb72/gitops.git
+    dest: /tmp/gitops
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+
+- name: Install argocd
+  kubernetes.core.helm:
+    kubeconfig: /etc/rancher/k3s/k3s.yaml
+    update_repo_cache: true
+    dependency_update: true
+    name: argocd
+    chart_ref: /tmp/gitops/charts/argo-cd
+    create_namespace: true
+    release_namespace: argocd
+    values_files:
+      - /tmp/gitops/charts/argo-cd/values-{{ k3s_in_cluster }}.yaml
+    wait: true
+
+- name: Check if argocd binary is installed on controllers
+  ansible.builtin.stat:
+    path: /var/opt/k3s/argo_installed.done
+  register: argo_installed
+  when:
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+- name: Install argocd binary on controllers
+  ansible.builtin.command: /var/opt/k3s/argocd.project.sh
+  args:
+    creates: /var/opt/k3s/argo_installed.done
+  changed_when: false
+  when:
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+    - not argo_installed.stat.exists
+
+- name: Create argocd project definition
+  ansible.builtin.copy:
+    dest: /var/opt/k3s/argocd.project.yaml
+    content: |
+      metadata:
+        name: {{ k3s_in_cluster }}
+        namespace: argocd
+      spec:
+        clusterResourceWhitelist:
+          - group: '*'
+            kind: '*'
+        destinations:
+          - namespace: '*'
+            server: '*'
+        sourceRepos:
+          - '*'
+    mode: "0644"
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+    - not argo_installed.stat.exists
+
+- name: Install argocd binary
+  ansible.builtin.copy:
+    dest: /var/opt/k3s/argocd.project.sh
+    content: |
+      #!/usr/bin/env bash
+      [ -f /usr/local/bin/argocd ] && exit 0
+      VERSION=$(curl -L -s https://raw.githubusercontent.com/argoproj/argo-cd/stable/VERSION)
+      curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/download/v$VERSION/argocd-linux-amd64
+      install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
+      rm argocd-linux-amd64
+      touch /var/opt/k3s/argo_installed.done
+    mode: "0755"
+  when:
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+    - not argo_installed.stat.exists
+
+- name: Install argocd binary
+  ansible.builtin.copy:
+    dest: /var/opt/k3s/create.argocd.project.sh
+    content: |
+      #!/usr/bin/env bash
+      /usr/local/bin/argocd login $(kubectl get service argocd-server -n argocd --output=jsonpath='{.status.loadBalancer.ingress[0].ip}') --username admin --password $(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d; echo) --insecure
+      /usr/local/bin/argocd proj create {{ k3s_in_cluster }} -f /var/opt/k3s/argocd.project.yaml
+      helm template /tmp/gitops/umbrella-chart/{{ k3s_in_cluster }} | kubectl -n argocd apply -f -
+    mode: "0755"
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+    - not argo_installed.stat.exists
+
+- name: Install argocd binary on controllers
+  ansible.builtin.command: /var/opt/k3s/argocd.project.sh
+  args:
+    creates: /var/opt/k3s/argo_installed.done
+  changed_when: false
+  when:
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+    - not argo_installed.stat.exists
+
+- name: Install argocd project
+  ansible.builtin.command: /var/opt/k3s/create.argocd.project.sh
+  args:
+    creates: /var/opt/k3s/argo_project.done
+  changed_when: false
+  when:
+    - "k3s_bootstrap_host == inventory_hostname"
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
+    - not argo_installed.stat.exists
+
+# new
+#- name: Apply metallb values to the cluster.
+#  kubernetes.core.k8s:
+#    kubeconfig: /etc/rancher/k3s/k3s.yaml
+#    state: present
+#    src: "/var/opt/k3s/{{ item }}"
+#  loop:
+#    - IPAddressPool.yaml
+#    - L2Advertisement.yaml
+#  when:
+#    - "k3s_bootstrap_host == inventory_hostname"
+#    - k3s_is_controller is sameas true
+#    - k3s_is_node is sameas false
+##- name: Create memberlist secret for metallb
+##  ansible.builtin.command: >
+##    kubectl create secret generic -n metallb-system metallb-memberlist
 #    --from-literal=secretkey="$(openssl rand -base64 128)"
 #  register: create_secret
 #  changed_when: create_secret.rc == 0
