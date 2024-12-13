@@ -253,7 +253,6 @@
     - name: csi-driver-nfs
       url: https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
   when:
-    - "k3s_bootstrap_host == inventory_hostname"
     - k3s_is_controller is sameas true
     - k3s_is_node is sameas false
 
@@ -276,6 +275,7 @@
           share: "{{ k3s_nfs.path }}"
         reclaimPolicy: Delete
         volumeBindingMode: Immediate
+    timeout: 10m
   when:
     - "k3s_bootstrap_host == inventory_hostname"
     - k3s_is_controller is sameas true

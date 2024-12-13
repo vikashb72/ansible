@@ -7,7 +7,7 @@ k3s_firewalls:
 
 k3s_nfs:
   server: 192.168.0.3
-  path: /zroot/data/nfs
+  path: /data/nfs
 
 k3s_clusters:
   - name: k3s
