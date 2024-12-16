@@ -14,6 +14,7 @@ u22-docker
 u22-dev
 u22-uat
 u22-prod
+minikube
 
 [hvault]
 k3s-dev-vault
