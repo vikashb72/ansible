@@ -73,6 +73,28 @@ minikube start \
     --insecure-registry "192.168.0.0/24" \
     --wait=all
 
+minikube addons enable dashboard
+minikube addons enable metrics-server
+minikube addons enable metallb
+#minikube addons configure metallb
+
+cat > /tmp/metallb.cm.yaml <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config
+  namespace: metallb-system
+data:
+  config: |
+    address-pools:
+      - name: default
+        protocol: layer2
+        addresses:
+          - 192.168.49.224/27
+EOF
+
+kubectl -n metallb-system apply -f /tmp/metallb.cm.yaml
+
 export MINIKUBE_IP=$(minikube ip)
 
 # Install nfs-provisioning
@@ -116,7 +138,7 @@ argocd login $(minikube ip):30080 --username admin \
         -o jsonpath="{.data.password}" | base64 -d; echo) --insecure
 argocd cluster list
 
-cat > ${EVT}.yaml <<EOF
+cat > /tmp/${EVT}.yaml <<EOF
 metadata:
   name: ${EVT}
   namespace: argocd
@@ -131,7 +153,7 @@ spec:
     - '*'
 EOF
 
-argocd proj create $EVT -f ${EVT}.yaml
+argocd proj create $EVT -f /tmp/${EVT}.yaml
     
 helm template /tmp/gitops/umbrella-chart/${EVT} | kubectl -n argocd apply -f -
 argocd cluster list
