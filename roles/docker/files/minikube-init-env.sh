@@ -92,10 +92,11 @@ kubectl wait -n nfs-provisioning pods \
     --timeout=30s
 
 kubectl create namespace external-secrets
-kubectl -n external-secrets create secret generic external-hashicorp-vault-token \
-   --from-literal=addr=${EXTERNAL_VAULT_ADDR} \
-   --from-literal=token=${ESO_TOKEN} \
-   --from-file=root.ca=/usr/local/share/ca-certificates/Where_Ever_Root_CA_Root_CA_212425365443306115571426638685908456843.crt
+kubectl -n external-secrets \
+  create secret generic external-hashicorp-vault-token \
+  --from-literal=addr=${EXTERNAL_VAULT_ADDR} \
+  --from-literal=token=${ESO_TOKEN} \
+  --from-file=root.ca=/usr/local/share/ca-certificates/Where_Ever_Root_CA_Root_CA_212425365443306115571426638685908456843.crt
 
 rm -rf /tmp/gitops
 git clone git@github.com:vikashb72/gitops.git /tmp/gitops
@@ -110,7 +111,9 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 echo ""
 echo "$(cat argocd.adm.pw)"
 echo ""
-argocd login 192.168.49.2:30080 --insecure
+argocd login $(minikube ip):30080 --username admin \
+    --password $(kubectl -n argocd get secret argocd-initial-admin-secret \
+        -o jsonpath="{.data.password}" | base64 -d; echo) --insecure
 argocd cluster list
 
 cat > ${EVT}.yaml <<EOF
