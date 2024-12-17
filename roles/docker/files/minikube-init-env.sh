@@ -22,7 +22,7 @@ EOT
 #
 # Defaults
 #
-NFS_SERVER="192.168.0.5"
+NFS_SERVER="192.168.0.3"
 NFS_PATH="/data/nfs"
 VAULT_URL="https://192.168.0.22:8200"
 CPU=2
