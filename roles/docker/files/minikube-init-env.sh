@@ -51,12 +51,15 @@ export EXTERNAL_VAULT
 export EVT
 
 # Add Helm repos
-helm repo add argo-cd https://argoproj.github.io/argo-helm
+helm repo add argocd https://argoproj.github.io/argo-helm
 helm repo add external-secrets https://charts.external-secrets.io
 helm repo add hashicorp https://helm.releases.hashicorp.com
 helm repo add jetstack https://charts.jetstack.io
-helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
-helm repo add vault-raft-snapshot-agent https://argelbargel.github.io/vault-raft-snapshot-agent-helm/
+helm repo add nfs-subdir-external-provisioner \
+  https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
+helm repo add metallb https://metallb.github.io/metallb
+helm repo add csi-driver-nfs \
+  https://raw.githubusercontent.com/kubernetes-csi/csi-driver-nfs/master/charts
 
 # set up env
 minikube stop
@@ -94,12 +97,12 @@ kubectl -n external-secrets create secret generic external-hashicorp-vault-token
    --from-literal=token=${ESO_TOKEN} \
    --from-file=root.ca=/usr/local/share/ca-certificates/Where_Ever_Root_CA_Root_CA_212425365443306115571426638685908456843.crt
 
-rm -rf gitops
-git clone git@github.com:vikashb72/gitops.git
-helm dep update gitops/charts/argo-cd
-helm install -n argocd argo-cd  gitops/charts/argo-cd \
+rm -rf /tmp/gitops
+git clone git@github.com:vikashb72/gitops.git /tmp/gitops
+helm dep update /tmp/gitops/charts/argo-cd
+helm install -n argocd argo-cd  /tmp/gitops/charts/argo-cd \
     --create-namespace=true \
-    -f gitops/charts/argo-cd/values-${EVT}.yaml \
+    -f /tmp/gitops/charts/argo-cd/values-${EVT}.yaml \
     --wait 
 
 kubectl -n argocd get secret argocd-initial-admin-secret \
@@ -127,6 +130,6 @@ EOF
 
 argocd proj create $EVT -f ${EVT}.yaml
     
-helm template gitops/umbrella-chart/${EVT} | kubectl -n argocd apply -f -
+helm template /tmp/gitops/umbrella-chart/${EVT} | kubectl -n argocd apply -f -
 argocd cluster list
 argocd app list
