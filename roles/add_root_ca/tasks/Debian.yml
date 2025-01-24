@@ -8,6 +8,7 @@
     mode: "0755"
   notify: Update ca-certificates
   loop:
+    - Where_Ever_Root_CA_Root_CA_2025.crt
     - Where_Ever_Root_CA_Root_CA_212425365443306115571426638685908456843.crt
   loop_control:
     loop_var: certs

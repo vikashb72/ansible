@@ -20,10 +20,10 @@ minikube
 k3s-dev-vault
 u22-vault
 u22-vault-ca
+playbox
 
 [mgmt]
-ois
-overseer
+playbox
 
 [gfs]
 u22-gfs-[1:3]
