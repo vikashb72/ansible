@@ -21,6 +21,7 @@ k3s-dev-vault
 u22-vault
 u22-vault-ca
 playbox
+minikube
 
 [mgmt]
 playbox

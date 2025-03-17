@@ -164,15 +164,14 @@
   changed_when: false
   when: not tools_added.stat.exists
 
-- name: Install helm
-  ansible.builtin.copy:
-    src: "{{ item }}"
-    dest: "/usr/local/bin/{{ item }}"
-    owner: root
-    mode: "0755"
-  loop:
-    - minikube-init-env.sh
-
+#- name: Install helm
+#  ansible.builtin.copy:
+#    src: "{{ item }}"
+#    dest: "/usr/local/bin/{{ item }}"
+#    owner: root
+#    mode: "0755"
+#  loop:
+#    - minikube-init-env.sh
 
 - name: Update bashrc for my settings
   ansible.builtin.blockinfile:
