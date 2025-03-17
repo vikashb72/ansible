@@ -80,6 +80,7 @@
     - python3-jmespath
     - nfs-client
     - helm
+    - dnsutils
 
 - name: Download docker key
   ansible.builtin.get_url:
