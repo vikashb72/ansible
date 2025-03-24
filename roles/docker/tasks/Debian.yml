@@ -135,20 +135,38 @@
       #!/bin/bash
       mkdir -p /usr/local/bin
       cd /usr/local/bin
-      # kubctl-convert
+      #
+      # -- kubectl-convert
+      #
       curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl-convert"
       chmod 0755 /usr/local/bin/kubectl-convert
-      # kustomize
+      #
+      # -- kustomize
+      #
       curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+      #
       # glooctl
+      #
       curl -sL https://run.solo.io/gloo/install | sh
       mv /root/.gloo/bin/glooctl  .
+      rm -rf /root/.gloo
+      #
+      # -- meshctl
+      #
+      curl -sL https://run.solo.io/meshctl/install | GLOO_MESH_VERSION=v2.6.6 sh -
+      sudo install -m 0755 ~/.gloo-mesh/bin/meshctl /usr/local/bin/meshctl
+      #/usr/local/bin/glooctl install gateway
+      rm -rf /root/.gloo-mesh
+      #
+      # argocd
       #
       curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
       sudo install -m 555 argocd-linux-amd64 /usr/local/bin/argocd
       rm argocd-linux-amd64
-      rm -fr /root/.gloo
-      /usr/local/bin/glooctl install gateway
+      #
+      # knative
+      #
+      curl -sSL -o /usr/local/bin/kn https://github.com/knative/client/releases/download/knative-v1.17.0/kn-linux-amd64
       touch /var/opt/minikube/add-tools.done
     owner: root
     mode: "0700"
