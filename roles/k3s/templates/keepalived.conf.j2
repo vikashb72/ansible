@@ -2,15 +2,9 @@ global_defs {
    notification_email {
      vikashb@home.where-ever.za.net
    }
-   notification_email_from k3s@home.where-ever.za.net
+   notification_email_from keepalived@{{ ansible_fqdn }}
    smtp_server localhost
    smtp_connect_timeout 30
-}
-
-vrrp_script chk_haproxy {
-    script "systemctl is-active haproxy"  # check the haproxy process
-    interval 2                            # every 2 seconds
-    weight 2                              # add 2 points if OK
 }
 
 vrrp_instance VI_1 {
@@ -38,9 +32,5 @@ vrrp_instance VI_1 {
     authentication {
         auth_type PASS
         auth_pass 12345
-    }
-
-    track_script {
-        chk_haproxy
     }
 }

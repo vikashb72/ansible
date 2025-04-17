@@ -14,18 +14,18 @@ k3s_clusters:
     networks:
       pods: 10.42.0.0/16
       services: 10.43.0.0/16
-      lb_pool: "192.168.0.110-192.168.0.126"
+      lb_pool: "192.168.0.37-192.168.0.49"
     bootstrap:
-      node: k3s-dev-c1
+      node: server-1.k3s.where-ever.net
       ip: 192.168.0.31
     controllers:
-      - k3s-dev-c1
-      - k3s-dev-c2
-      - k3s-dev-c3
+      - server-1.k3s.where-ever.net
+      - server-2.k3s.where-ever.net
+      - server-3.k3s.where-ever.net
     nodes:
-      - k3s-dev-n1
-      - k3s-dev-n2
-      - k3s-dev-n3
+      - agent-1.k3s.where-ever.net
+      - agent-2.k3s.where-ever.net
+      - agent-3.k3s.where-ever.net
     ips:
       controllers:
         - 192.168.0.31
@@ -36,34 +36,7 @@ k3s_clusters:
         - 192.168.0.35
         - 192.168.0.36
     tls_san:
-      node: k3s-dev.home.where-ever.za.net
+      node: cluster.k3s.where-ever.net
       ip: 192.168.0.30
-  - name: prd
-    networks:
-      pods: 10.42.0.0/16
-      services: 10.43.0.0/16
-    bootstrap:
-      node: k3s-prd-c1
-      ip: 192.168.0.41
-    controllers:
-      - k3s-prd-c1
-      - k3s-prd-c2
-      - k3s-prd-c3
-    nodes:
-      - k3s-prd-n1
-      - k3s-prd-n2
-      - k3s-prd-n3
-    ips:
-      controllers:
-        - 192.168.0.41
-        - 192.168.0.42
-        - 192.168.0.43
-      nodes:
-        - 192.168.0.44
-        - 192.168.0.45
-        - 192.168.0.46
-    tls_san:
-      node: k3s-prd.home.where-ever.za.net
-      ip: 192.168.0.40
 
 ...
