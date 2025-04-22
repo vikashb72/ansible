@@ -142,10 +142,9 @@
         --embedded-registry \
         --disable=local-storage \
         --disable=servicelb \
+        --disable=traefik \
         --tls-san={{ k3s_tls_san }} \
-        --tls-san={{ k3s_tls_san_ip }} \
-        --tls-san={{ k3s_bootstrap_host }} \
-        --tls-san={{ k3s_bootstrap_ip }}
+        --tls-san={{ k3s_tls_san_ip }}
       touch /var/opt/k3s/install.done
     mode: "0755"
   when:
@@ -200,6 +199,7 @@
         --embedded-registry \
         --disable=local-storage \
         --disable=servicelb \
+        --disable=traefik \
         --tls-san={{ k3s_tls_san }} \
         --tls-san={{ k3s_tls_san_ip }}
       touch /var/opt/k3s/install.done
@@ -249,8 +249,8 @@
   loop:
     - name: metallb
       url: https://metallb.github.io/metallb
-    #- name: argocd
-    #  url: https://argoproj.github.io/argo-helm
+    - name: argocd
+      url: https://argoproj.github.io/argo-helm
     - name: nfs-subdir-external-provisioner
       url: https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner
     - name: csi-driver-nfs
@@ -358,6 +358,20 @@
   when:
     - "k3s_bootstrap_host != inventory_hostname"
     - not installation_done.stat.exists
+
+- name: Update bashrc for my settings
+  ansible.builtin.blockinfile:
+    path: "{{ item }}"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - kubectl completion"
+    block: |
+      source <(kubectl completion bash)
+      export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
+  loop:
+    - /root/.bashrc
+    - /home/vikashb/.bashrc
+  when:
+    - k3s_is_controller is sameas true
+    - k3s_is_node is sameas false
 
 #- name: Clone gitops repo
 #  ansible.builtin.git:
