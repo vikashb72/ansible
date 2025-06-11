@@ -18,6 +18,8 @@ minikube
 
 [mgmt]
 playbox
+osq
+osctrl
 
 [gfs]
 u22-gfs-[1:3]
